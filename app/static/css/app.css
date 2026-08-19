@@ -45,3 +45,8 @@ table { border-collapse: collapse; width: 100%; }
 th, td { border-bottom: 1px solid #dee2e6; padding: .75rem; text-align: left; white-space: nowrap; }
 th { background: #f8f9fa; }
 @media (max-width: 600px) { .page-heading { display: grid; gap: 1rem; } .user-box { text-align: left; } .actions { justify-content: flex-start; } }
+.form-card { max-width: 760px; }
+.form-grid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+.checkbox-row { display: flex; flex-wrap: wrap; gap: 1rem; }
+.checkbox-row label { align-items: center; display: flex; flex-direction: row; font-weight: 500; }
+.checkbox-row input { width: auto; }

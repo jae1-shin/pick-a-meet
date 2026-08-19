@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}사용자 {{ '수정' if target else '등록' }} · Pick a Meet{% endblock %}
+{% block content %}
+  <div class="page-heading"><div><p class="eyebrow">ADMIN</p><h1>사용자 {{ '수정' if target else '등록' }}</h1></div><a href="/admin">목록으로</a></div>
+  <section class="card form-card">
+    {% if error %}<div class="alert" role="alert">{{ error }}</div>{% endif %}
+    <form method="post" class="form-stack">
+      <input type="hidden" name="csrf" value="{{ csrf_token }}">
+      <div class="form-grid">
+        <label>ID<input name="login_id" value="{{ target.login_id if target else '' }}" required></label>
+        <label>사번<input name="employee_no" value="{{ target.employee_no if target else '' }}" required></label>
+        <label>이름<input name="name" value="{{ target.name if target else '' }}" required></label>
+        <label>파트<input name="part_name" value="{{ target.module.part.name if target else '' }}" required></label>
+        <label>모듈<input name="module_name" value="{{ target.module.name if target else '' }}" required></label>
+      </div>
+      <div class="checkbox-row">
+        <label><input type="checkbox" name="apply_enabled" value="true" {% if not target or target.apply_enabled %}checked{% endif %}> 신청 가능</label>
+        <label><input type="checkbox" name="host_enabled" value="true" {% if target and target.host_enabled %}checked{% endif %}> Host 가능</label>
+        <label><input type="checkbox" name="admin_enabled" value="true" {% if target and target.admin_enabled %}checked{% endif %}> Admin</label>
+        <label><input type="checkbox" name="active" value="true" {% if not target or target.active %}checked{% endif %}> 활성</label>
+      </div>
+      <button type="submit">저장</button>
+    </form>
+  </section>
+{% endblock %}

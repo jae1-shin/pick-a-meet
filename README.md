@@ -49,6 +49,8 @@ alembic upgrade head
 python -m scripts.seed_demo
 ```
 
+Seed에는 서로 다른 시간·장소·정원을 가진 OPEN 모임 5개가 포함됩니다. 기존 신청 데이터는 seed 재실행 시 삭제하지 않습니다.
+
 ## 핵심 업무 규칙
 
 - 사용자는 동시에 한 모임만 신청할 수 있으며 취소 후 다시 신청할 수 있습니다.

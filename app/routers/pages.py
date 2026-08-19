@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, Form, HTTPException, Request, status
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
@@ -34,6 +35,33 @@ async def current_member(request: Request, db: AsyncSession) -> Member:
         request.session.clear()
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
     return member
+
+
+async def require_admin(request: Request, db: AsyncSession) -> Member:
+    member = await current_member(request, db)
+    if not member.admin_enabled:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
+    if not request.session.get("admin_console_verified"):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
+    return member
+
+
+async def get_or_create_module(db: AsyncSession, part_name: str, module_name: str) -> Module:
+    clean_part = part_name.strip()
+    clean_module = module_name.strip()
+    part = await db.scalar(select(Part).where(Part.name == clean_part))
+    if part is None:
+        part = Part(name=clean_part)
+        db.add(part)
+        await db.flush()
+    module = await db.scalar(
+        select(Module).where(Module.part_id == part.part_id, Module.name == clean_module)
+    )
+    if module is None:
+        module = Module(part_id=part.part_id, name=clean_module)
+        db.add(module)
+        await db.flush()
+    return module
 
 
 @router.get("/meetings", response_class=HTMLResponse)
@@ -212,6 +240,144 @@ async def admin_unlock(
             status_code=401,
         )
     request.session["admin_console_verified"] = True
+    return RedirectResponse("/admin", status_code=303)
+
+
+def member_form_context(
+    request: Request,
+    current_admin: Member,
+    target: Member | None = None,
+    error: str | None = None,
+) -> dict[str, object]:
+    return {
+        "request": request,
+        "member": current_admin,
+        "target": target,
+        "csrf_token": csrf_token(request),
+        "error": error,
+    }
+
+
+@router.get("/admin/members/new", response_class=HTMLResponse)
+async def admin_member_new_page(
+    request: Request, db: AsyncSession = Depends(get_db)
+) -> HTMLResponse:
+    admin = await require_admin(request, db)
+    return templates.TemplateResponse(
+        request=request,
+        name="admin/member_form.html",
+        context=member_form_context(request, admin),
+    )
+
+
+@router.post("/admin/members/new", response_class=HTMLResponse)
+async def admin_member_new(
+    request: Request,
+    login_id: str = Form(...),
+    employee_no: str = Form(...),
+    name: str = Form(...),
+    part_name: str = Form(...),
+    module_name: str = Form(...),
+    apply_enabled: bool = Form(False),
+    host_enabled: bool = Form(False),
+    admin_enabled: bool = Form(False),
+    active: bool = Form(False),
+    csrf: str = Form(...),
+    db: AsyncSession = Depends(get_db),
+) -> HTMLResponse:
+    verify_csrf(request, csrf)
+    admin = await require_admin(request, db)
+    try:
+        module = await get_or_create_module(db, part_name, module_name)
+        db.add(
+            Member(
+                login_id=login_id.strip(),
+                employee_no=employee_no.strip(),
+                name=name.strip(),
+                module_id=module.module_id,
+                apply_enabled=apply_enabled,
+                host_enabled=host_enabled,
+                admin_enabled=admin_enabled,
+                active=active,
+            )
+        )
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        return templates.TemplateResponse(
+            request=request,
+            name="admin/member_form.html",
+            context=member_form_context(
+                request, admin, error="이미 사용 중인 ID 또는 사번입니다."
+            ),
+            status_code=409,
+        )
+    return RedirectResponse("/admin", status_code=303)
+
+
+@router.get("/admin/members/{member_id}/edit", response_class=HTMLResponse)
+async def admin_member_edit_page(
+    member_id: int,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+) -> HTMLResponse:
+    admin = await require_admin(request, db)
+    target = await db.scalar(
+        select(Member)
+        .options(joinedload(Member.module).joinedload(Module.part))
+        .where(Member.member_id == member_id)
+    )
+    if target is None:
+        raise HTTPException(status_code=404)
+    return templates.TemplateResponse(
+        request=request,
+        name="admin/member_form.html",
+        context=member_form_context(request, admin, target),
+    )
+
+
+@router.post("/admin/members/{member_id}/edit", response_class=HTMLResponse)
+async def admin_member_edit(
+    member_id: int,
+    request: Request,
+    login_id: str = Form(...),
+    employee_no: str = Form(...),
+    name: str = Form(...),
+    part_name: str = Form(...),
+    module_name: str = Form(...),
+    apply_enabled: bool = Form(False),
+    host_enabled: bool = Form(False),
+    admin_enabled: bool = Form(False),
+    active: bool = Form(False),
+    csrf: str = Form(...),
+    db: AsyncSession = Depends(get_db),
+) -> HTMLResponse:
+    verify_csrf(request, csrf)
+    admin = await require_admin(request, db)
+    target = await db.get(Member, member_id)
+    if target is None:
+        raise HTTPException(status_code=404)
+    try:
+        module = await get_or_create_module(db, part_name, module_name)
+        target.login_id = login_id.strip()
+        target.employee_no = employee_no.strip()
+        target.name = name.strip()
+        target.module_id = module.module_id
+        target.apply_enabled = apply_enabled
+        target.host_enabled = host_enabled
+        target.admin_enabled = admin_enabled
+        target.active = active
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        return templates.TemplateResponse(
+            request=request,
+            name="admin/member_form.html",
+            context=member_form_context(
+                request, admin, target, "이미 사용 중인 ID 또는 사번입니다."
+            ),
+            status_code=409,
+        )
     return RedirectResponse("/admin", status_code=303)
 
 
