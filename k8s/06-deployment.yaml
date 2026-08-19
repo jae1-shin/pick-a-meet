@@ -1,0 +1,74 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pick-a-meet
+  namespace: pick-a-meet
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: pick-a-meet
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: pick-a-meet
+    spec:
+      terminationGracePeriodSeconds: 30
+      # Private registry라면 아래 주석을 풀고 Console에서 만든 Secret 이름을 적습니다.
+      # imagePullSecrets:
+      #   - name: CHANGE_ME_REGISTRY_SECRET
+      containers:
+        - name: pick-a-meet
+          image: CHANGE_ME_REGISTRY/pick-a-meet:0.1.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8000
+          envFrom:
+            - configMapRef:
+                name: pick-a-meet-config
+            - secretRef:
+                name: pick-a-meet-secret
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 6
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
+          volumeMounts:
+            - name: temporary-files
+              mountPath: /tmp
+            - name: uploads
+              mountPath: /app/data/uploads
+      volumes:
+        - name: temporary-files
+          emptyDir: {}
+        - name: uploads
+          emptyDir: {}

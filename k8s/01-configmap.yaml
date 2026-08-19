@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pick-a-meet-config
+  namespace: pick-a-meet
+data:
+  APP_ENV: production
+  APP_HOST: 0.0.0.0
+  APP_PORT: "8000"
+  DATABASE_HOST: CHANGE_ME_PG_HOST
+  DATABASE_PORT: "5432"
+  DATABASE_NAME: pick_a_meet
+  SESSION_TIMEOUT_SECONDS: "28800"
+  SESSION_COOKIE_SECURE: "true"
+  POLLING_INTERVAL_SECONDS: "5"
+  IMAGE_STORAGE_PATH: /app/data/uploads
+  TRUSTED_PROXY: "false"

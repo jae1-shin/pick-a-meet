@@ -23,7 +23,8 @@ GitHub repository 이름은 `pick-a-meet`을 사용합니다.
 - 완료: 현재 필터·보기 방식을 유지하는 5초 카드 현황 자동 갱신
 - 완료: Gowun Dodum 글꼴과 SIL OFL 라이선스를 `app/static/fonts/`에 내장
 - 완료: `/health/live`, `/health/ready`, PostgreSQL Docker Compose, Python 테스트 환경
-- 진행 예정: 동시성 부하 테스트, K8s manifest
+- 완료: 운영 image용 Dockerfile, DB migration·최초 Admin Job, replica 1 Kubernetes 기본 manifest
+- 진행 예정: 동시성 부하 테스트와 사내 registry·Gateway·PostgreSQL 실제 값 적용
 
 ## 현재 개발 서버 접속
 

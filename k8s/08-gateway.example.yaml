@@ -1,0 +1,20 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: pick-a-meet-gateway
+  namespace: pick-a-meet
+spec:
+  gatewayClassName: CHANGE_ME_GATEWAY_CLASS
+  listeners:
+    - name: https
+      hostname: CHANGE_ME_PICK_A_MEET_HOSTNAME
+      port: 443
+      protocol: HTTPS
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - kind: Secret
+            name: CHANGE_ME_TLS_SECRET_NAME
+      allowedRoutes:
+        namespaces:
+          from: Same

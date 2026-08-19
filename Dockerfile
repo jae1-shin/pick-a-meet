@@ -10,6 +10,10 @@ COPY pyproject.toml ./
 COPY app ./app
 RUN pip install --no-cache-dir .
 
+COPY alembic.ini ./
+COPY migrations ./migrations
+COPY scripts ./scripts
+
 RUN mkdir -p /app/data/uploads && chown -R app:app /app
 USER app
 

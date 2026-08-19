@@ -1,0 +1,35 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: pick-a-meet-migration-v1
+  namespace: pick-a-meet
+spec:
+  backoffLimit: 1
+  activeDeadlineSeconds: 300
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: pick-a-meet
+        app.kubernetes.io/component: migration
+    spec:
+      restartPolicy: Never
+      # Private registry라면 아래 주석을 풀고 Console에서 만든 Secret 이름을 적습니다.
+      # imagePullSecrets:
+      #   - name: CHANGE_ME_REGISTRY_SECRET
+      containers:
+        - name: migration
+          image: CHANGE_ME_REGISTRY/pick-a-meet:0.1.0
+          imagePullPolicy: IfNotPresent
+          command: ["alembic", "upgrade", "head"]
+          envFrom:
+            - configMapRef:
+                name: pick-a-meet-config
+            - secretRef:
+                name: pick-a-meet-secret
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault

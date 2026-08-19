@@ -1,0 +1,16 @@
+.git
+.github
+.env
+.venv
+.pytest_cache
+.playwright
+.playwright-cli
+.tools
+__pycache__
+*.py[cod]
+*.egg-info
+data/uploads/*
+tests
+output
+INTERNAL_DEPLOYMENT.md
+meeting_service_plan.md

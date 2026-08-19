@@ -1,0 +1,18 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: pick-a-meet
+  namespace: pick-a-meet
+spec:
+  ingressClassName: CHANGE_ME_INGRESS_CLASS
+  rules:
+    - host: CHANGE_ME_PICK_A_MEET_HOSTNAME
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: pick-a-meet
+                port:
+                  number: 8000
