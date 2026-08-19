@@ -33,6 +33,8 @@ GitHub repository 이름은 `pick-a-meet`을 사용합니다.
 | 리더(Host) | `leader01` | `10000002` | 이리더 | 플랫폼파트 / 서비스개발모듈 |
 | 일반 사용자 | `member01` | `10000003` | 박일반 | 플랫폼파트 / 서비스개발모듈 |
 
+개발용 관리자 콘솔 비밀번호는 `1234`입니다. 이 값은 로컬 `.env`에만 있으며 사내 환경에서는 반드시 Secret으로 교체합니다.
+
 서버를 다시 실행할 때는 다음 명령을 사용합니다.
 
 ```bash
@@ -151,6 +153,7 @@ DB 모델이 추가된 이후 integration/concurrency 테스트는 전용 Postgr
 | `DATABASE_USER` | DB 계정 | `meeting_app` |
 | `DATABASE_PASSWORD` | DB 비밀번호 | Secret으로 관리 |
 | `SESSION_SECRET_KEY` | Cookie 서명 key | 32자 이상, 환경별 별도 값 |
+| `ADMIN_CONSOLE_PASSWORD` | Admin 진입 추가 비밀번호 | 로컬만 `1234`, 운영 Secret으로 교체 |
 | `SESSION_TIMEOUT_SECONDS` | Session 만료 | 기본 8시간 |
 | `SESSION_COOKIE_SECURE` | HTTPS cookie 강제 | 로컬 `false`, 사내 HTTPS `true` |
 | `POLLING_INTERVAL_SECONDS` | 화면 갱신 주기 | 기본 5초 |

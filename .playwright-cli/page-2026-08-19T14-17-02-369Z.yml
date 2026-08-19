@@ -1,0 +1,18 @@
+- generic [ref=f2e1]:
+  - banner [ref=f2e2]:
+    - navigation "주 메뉴" [ref=f2e3]:
+      - link "Pick a Meet" [ref=f2e4] [cursor=pointer]:
+        - /url: /
+  - main [ref=f2e5]:
+    - generic [ref=f2e6]:
+      - paragraph [ref=f2e7]: ADMIN
+      - heading "관리자 콘솔 확인" [level=1] [ref=f2e8]
+      - paragraph [ref=f2e9]: 관리 기능을 사용하려면 콘솔 비밀번호를 입력해주세요.
+      - generic [ref=f2e10]:
+        - generic [ref=f2e11]:
+          - text: 콘솔 비밀번호
+          - textbox "콘솔 비밀번호" [active] [ref=f2e12]
+        - button "관리자 콘솔 열기" [ref=f2e13] [cursor=pointer]
+      - paragraph [ref=f2e14]:
+        - link "일반 화면으로 돌아가기" [ref=f2e15] [cursor=pointer]:
+          - /url: /meetings

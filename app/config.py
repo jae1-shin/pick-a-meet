@@ -26,6 +26,7 @@ class Settings(BaseSettings):
     session_secret_key: SecretStr = SecretStr(
         "local-development-secret-change-before-deploy"
     )
+    admin_console_password: SecretStr = SecretStr("change-me")
     session_timeout_seconds: int = Field(default=28_800, ge=300)
     session_cookie_secure: bool = False
 
