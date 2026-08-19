@@ -55,7 +55,7 @@ DEMO_USERS = (
         "name": name,
         "part": part,
         "module": module,
-        "admin_enabled": False,
+        "admin_enabled": index == 1,
         "host_enabled": True,
     }
     for index, (name, part, module) in enumerate(LEADER_PROFILES, start=1)
@@ -251,7 +251,7 @@ async def seed() -> None:
                 )
 
         await session.commit()
-        print("Demo data ready: 1 admin, 5 leaders, 11 members, 5 meetings")
+        print("Demo data ready: 2 admins (including leader01), 5 leaders, 11 members, 5 meetings")
 
 
 if __name__ == "__main__":
