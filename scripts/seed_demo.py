@@ -41,6 +41,10 @@ DEMO_USERS = (
 DEMO_MEETINGS = (
     {
         "place_name": "광교 모임 라운지",
+        "place_url": "https://map.naver.com/p/search/광교중앙역",
+        "neighborhood": "광교",
+        "representative_menu": "파스타와 피자",
+        "host_message": "편하게 이야기 나누며 좋은 저녁 보내요!",
         "start_at": (2026, 9, 5, 19, 0),
         "end_at": (2026, 9, 5, 21, 0),
         "description": "가볍게 저녁을 먹으며 서로의 관심사를 나누는 모임입니다.",
@@ -48,6 +52,10 @@ DEMO_MEETINGS = (
     },
     {
         "place_name": "서울숲 브런치 테이블",
+        "place_url": "https://map.naver.com/p/search/서울숲",
+        "neighborhood": "성수·서울숲",
+        "representative_menu": "브런치 플래터",
+        "host_message": "주말 낮에 가볍게 만나 맛있는 브런치 먹어요.",
         "start_at": (2026, 9, 12, 11, 30),
         "end_at": (2026, 9, 12, 13, 30),
         "description": "서울숲 근처에서 브런치를 즐기는 소규모 모임입니다.",
@@ -55,6 +63,10 @@ DEMO_MEETINGS = (
     },
     {
         "place_name": "강남 보드게임 카페",
+        "place_url": "https://map.naver.com/p/search/강남역 보드게임카페",
+        "neighborhood": "강남",
+        "representative_menu": "보드게임과 스낵",
+        "host_message": "룰을 몰라도 괜찮아요. 제가 차근차근 알려드릴게요!",
         "start_at": (2026, 9, 18, 18, 30),
         "end_at": (2026, 9, 18, 21, 30),
         "description": "초보자도 편하게 참여할 수 있는 보드게임 저녁입니다.",
@@ -62,6 +74,10 @@ DEMO_MEETINGS = (
     },
     {
         "place_name": "광교호수공원 러닝",
+        "place_url": "https://map.naver.com/p/search/광교호수공원",
+        "neighborhood": "광교",
+        "representative_menu": "러닝 후 이온음료",
+        "host_message": "기록보다 함께 완주하는 게 목표입니다.",
         "start_at": (2026, 9, 23, 19, 30),
         "end_at": (2026, 9, 23, 21, 0),
         "description": "천천히 5km를 달리고 산책으로 마무리합니다.",
@@ -69,6 +85,10 @@ DEMO_MEETINGS = (
     },
     {
         "place_name": "수원 쿠킹 스튜디오",
+        "place_url": "https://map.naver.com/p/search/수원 쿠킹스튜디오",
+        "neighborhood": "수원역·행궁동",
+        "representative_menu": "생면 파스타",
+        "host_message": "요리를 처음 해보는 분도 환영합니다!",
         "start_at": (2026, 10, 2, 18, 30),
         "end_at": (2026, 10, 2, 21, 0),
         "description": "함께 파스타를 만들고 저녁을 나누는 체험 모임입니다.",
@@ -126,6 +146,10 @@ async def seed() -> None:
             if meeting is None:
                 meeting = Meeting(
                     place_name=item["place_name"],
+                    place_url=item["place_url"],
+                    neighborhood=item["neighborhood"],
+                    representative_menu=item["representative_menu"],
+                    host_message=item["host_message"],
                     start_at=datetime(*item["start_at"], tzinfo=seoul),
                     end_at=datetime(*item["end_at"], tzinfo=seoul),
                     description_content=item["description"],
@@ -134,6 +158,13 @@ async def seed() -> None:
                 )
                 session.add(meeting)
                 await session.flush()
+            else:
+                meeting.place_url = item["place_url"]
+                meeting.neighborhood = item["neighborhood"]
+                meeting.representative_menu = item["representative_menu"]
+                meeting.host_message = item["host_message"]
+                meeting.description_content = item["description"]
+                meeting.capacity = item["capacity"]
             host = await session.scalar(
                 select(MeetingHost).where(MeetingHost.meeting_id == meeting.meeting_id)
             )

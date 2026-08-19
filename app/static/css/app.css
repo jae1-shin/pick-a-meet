@@ -24,6 +24,7 @@ h1 { font-size: clamp(1.5rem, 5vw, 2rem); margin: 0 0 1rem; }
 .form-stack { display: grid; gap: 1rem; margin-top: 1.5rem; }
 label { display: grid; gap: .4rem; font-weight: 600; }
 input { width: 100%; border: 1px solid #ced4da; border-radius: .375rem; padding: .7rem .8rem; font: inherit; }
+select, textarea { width: 100%; border: 1px solid #ced4da; border-radius: .375rem; padding: .7rem .8rem; font: inherit; }
 button, .button { background: #0d6efd; border: 1px solid #0d6efd; border-radius: .375rem; color: #fff; cursor: pointer; display: inline-block; font: inherit; font-weight: 600; padding: .65rem 1rem; text-decoration: none; }
 button:disabled { background: #adb5bd; border-color: #adb5bd; cursor: not-allowed; }
 .secondary { background: #fff; border-color: #6c757d; color: #495057; }
@@ -39,6 +40,17 @@ button:disabled { background: #adb5bd; border-color: #adb5bd; cursor: not-allowe
 .link-button { background: transparent; border: 0; color: #0d6efd; padding: 0; }
 .meeting-grid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
 .meeting-card h3 { margin-top: 0; }
+.meeting-card blockquote { border-left: 3px solid #0d6efd; color: #495057; margin: 1rem 0; padding-left: .8rem; }
+.meeting-facts { display: grid; gap: .5rem; grid-template-columns: 1fr 1fr; }
+.meeting-facts div { background: #f8f9fa; border-radius: .375rem; padding: .6rem; }
+.meeting-facts dt { color: #6c757d; font-size: .75rem; font-weight: 700; }
+.meeting-facts dd { margin: .2rem 0 0; }
+.list-toolbar { align-items: center; display: flex; justify-content: space-between; }
+.view-toggle { background: #e9ecef; border-radius: .4rem; display: flex; padding: .2rem; }
+.view-toggle a { border-radius: .3rem; color: #495057; padding: .45rem .75rem; text-decoration: none; }
+.view-toggle a.active { background: #fff; color: #0d6efd; font-weight: 700; }
+.meeting-group { margin-bottom: 2rem; }
+.group-title { border-bottom: 1px solid #dee2e6; padding-bottom: .65rem; }
 .capacity { border-top: 1px solid #e9ecef; display: flex; justify-content: space-between; margin: 1.25rem 0; padding-top: 1rem; }
 .table-wrap { overflow-x: auto; padding: 0; }
 table { border-collapse: collapse; width: 100%; }
@@ -50,3 +62,4 @@ th { background: #f8f9fa; }
 .checkbox-row { display: flex; flex-wrap: wrap; gap: 1rem; }
 .checkbox-row label { align-items: center; display: flex; flex-direction: row; font-weight: 500; }
 .checkbox-row input { width: auto; }
+.summary-card { margin-bottom: 1rem; }

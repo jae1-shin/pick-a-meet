@@ -101,6 +101,10 @@ class Meeting(TimestampMixin, Base):
 
     meeting_id: Mapped[int] = mapped_column(primary_key=True)
     place_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    place_url: Mapped[str | None] = mapped_column(String(500))
+    neighborhood: Mapped[str] = mapped_column(String(100), nullable=False)
+    representative_menu: Mapped[str] = mapped_column(String(200), nullable=False)
+    host_message: Mapped[str] = mapped_column(Text, nullable=False)
     start_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     end_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     description_content: Mapped[str] = mapped_column(Text, nullable=False)

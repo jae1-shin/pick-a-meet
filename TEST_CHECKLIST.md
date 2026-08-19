@@ -22,6 +22,8 @@
 - [ ] Admin도 일반 사용자 신청 규칙 적용
 - [ ] CLOSED/CANCELLED/DRAFT 모임 신청 차단
 - [ ] 일반 응답 HTML/API에 Host 및 다른 신청자 식별정보 없음
+- [x] Host는 본인 모임 신청자의 이름·ID·파트·모듈만 조회 가능
+- [ ] Host가 다른 Host 모임 신청자 URL에 접근하면 403
 - [ ] 신청/취소 history가 같은 transaction에 기록
 - [ ] HTMX polling과 신청 직후 fragment 갱신
 - [ ] 이미지 MIME/크기/디코딩/HTML sanitization
