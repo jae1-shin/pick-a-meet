@@ -125,6 +125,18 @@ th { background: #f8f9fa; }
 .checkbox-row label { align-items: center; display: flex; flex-direction: row; font-weight: 500; }
 .checkbox-row input { width: auto; }
 .summary-card { margin-bottom: 1rem; }
+.registration-settings-card { max-width: 620px; }
+.registration-setting-status { align-items: baseline; border-bottom: 1px solid #e9ecef; display: flex; flex-wrap: wrap; gap: .45rem .75rem; padding-bottom: 1rem; }
+.registration-setting-status > span { color: #6c757d; font-size: .8rem; font-weight: 700; }
+.registration-setting-status > strong { color: #0d6efd; }
+.registration-setting-status > small { color: #6c757d; width: 100%; }
+.waiting-card { margin: 3rem auto 2rem; max-width: 560px; text-align: center; }
+.waiting-card h1 { font-size: 1.25rem; line-height: 1.5; margin-bottom: .65rem; }
+.waiting-time { font-size: 1rem; font-weight: 700; margin: 1rem 0 .25rem; }
+.waiting-remaining { color: #212529; font-size: 1rem; font-weight: 700; margin: .25rem 0 0; }
+.waiting-remaining strong { color: inherit; font-variant-numeric: tabular-nums; font-weight: inherit; }
+.waiting-meeting-grid { margin-bottom: 2rem; }
+.waiting-meeting-grid .capacity { margin-bottom: 0; }
 .applicant-tooltip { cursor: help; position: relative; }
 .tooltip-panel { background: #212529; border-radius: .5rem; bottom: calc(100% + .5rem); box-shadow: 0 .5rem 1.25rem rgba(0,0,0,.2); color: #fff; display: none; left: 0; max-height: 260px; min-width: 260px; overflow: auto; padding: .8rem; position: absolute; text-align: left; z-index: 20; }
 .applicant-tooltip:hover .tooltip-panel, .applicant-tooltip:focus .tooltip-panel, .applicant-tooltip:focus-within .tooltip-panel { display: block; }

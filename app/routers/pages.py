@@ -5,20 +5,79 @@ from zoneinfo import ZoneInfo
 from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
-from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.models import Meeting, MeetingHost, Registration
 from app.policies.access import current_member
-from app.services.meeting_view import KOREAN_WEEKDAYS, korean_time, load_applicants
+from app.services.meeting_view import (
+    KOREAN_WEEKDAYS,
+    build_meeting_filter_context,
+    korean_time,
+    load_public_meeting_views,
+)
 from app.services.registration_service import apply_to_meeting, cancel_registration
+from app.services.registration_window import (
+    registration_is_open,
+    registration_opens_at,
+    registration_remaining_ms,
+)
 from app.services.session_service import csrf_token, verify_csrf
 
 
 router = APIRouter(tags=["meetings"])
 templates = Jinja2Templates(directory=Path(__file__).resolve().parents[1] / "templates")
 templates.env.filters["korean_time"] = korean_time
+
+
+@router.get("/registration-window/status")
+async def registration_window_status(request: Request) -> dict[str, object]:
+    if not request.session.get("member_id"):
+        raise HTTPException(status_code=401)
+    return {
+        "open": registration_is_open(),
+        "remaining_ms": registration_remaining_ms(),
+    }
+
+
+@router.get("/waiting", response_class=HTMLResponse)
+async def waiting_page(
+    request: Request,
+    neighborhood_filters: list[str] | None = Query(None, alias="neighborhood"),
+    date_filters: list[str] | None = Query(None, alias="date"),
+    db: AsyncSession = Depends(get_db),
+) -> HTMLResponse:
+    try:
+        member = await current_member(request, db)
+    except HTTPException:
+        return RedirectResponse("/login", status_code=303)
+    if member.admin_enabled or member.host_enabled or registration_is_open():
+        return RedirectResponse("/meetings", status_code=303)
+    opens_at = registration_opens_at()
+    if opens_at is None:
+        return RedirectResponse("/meetings", status_code=303)
+    remaining_ms = registration_remaining_ms()
+    local_opens_at = opens_at.astimezone(ZoneInfo("Asia/Seoul"))
+    meeting_views, _ = await load_public_meeting_views(
+        db, member, registration_open=False
+    )
+    filter_context = build_meeting_filter_context(
+        meeting_views,
+        neighborhood_filters=neighborhood_filters,
+        date_filters=date_filters,
+        base_path="/waiting",
+    )
+    return templates.TemplateResponse(
+        request=request,
+        name="meetings/waiting.html",
+        context={
+            "member": member,
+            "csrf_token": csrf_token(request),
+            "opens_at": local_opens_at,
+            "weekday": KOREAN_WEEKDAYS[local_opens_at.weekday()],
+            "remaining_ms": remaining_ms,
+            **filter_context,
+        },
+    )
 
 
 @router.get("/style/font-preview", response_class=HTMLResponse)
@@ -65,164 +124,25 @@ async def meetings_page(
     date_filters: list[str] | None = Query(None, alias="date"),
     db: AsyncSession = Depends(get_db),
 ) -> HTMLResponse:
-    try:
-        member = await current_member(request, db)
-    except HTTPException:
+    if not request.session.get("member_id"):
         return RedirectResponse("/login", status_code=303)
+    member = await current_member(request, db)
+    registration_open = registration_is_open()
+    if not registration_open and not (member.admin_enabled or member.host_enabled):
+        return RedirectResponse("/waiting", status_code=303)
 
-    count_subquery = (
-        select(Registration.meeting_id, func.count().label("applied_count"))
-        .group_by(Registration.meeting_id)
-        .subquery()
+    meeting_views, is_open_host = await load_public_meeting_views(
+        db, member, registration_open=registration_open
     )
-    rows = (
-        await db.execute(
-            select(Meeting, func.coalesce(count_subquery.c.applied_count, 0))
-            .outerjoin(count_subquery, count_subquery.c.meeting_id == Meeting.meeting_id)
-            .where(Meeting.status == "OPEN")
-            .order_by(Meeting.start_at)
-        )
-    ).all()
-    active_registration = await db.scalar(
-        select(Registration).where(Registration.member_id == member.member_id)
+    filter_context = build_meeting_filter_context(
+        meeting_views,
+        neighborhood_filters=neighborhood_filters,
+        date_filters=date_filters,
+        base_path="/meetings",
+        base_params=[("group_by", group_by)],
     )
-    is_open_host = bool(
-        await db.scalar(
-            select(func.count())
-            .select_from(MeetingHost)
-            .join(Meeting, Meeting.meeting_id == MeetingHost.meeting_id)
-            .where(
-                MeetingHost.member_id == member.member_id,
-                Meeting.status == "OPEN",
-            )
-        )
-    )
-    seoul = ZoneInfo("Asia/Seoul")
-    applicants = await load_applicants(
-        db, [meeting.meeting_id for meeting, _ in rows]
-    )
-    meeting_views = [
-        {
-            "meeting": meeting,
-            "applied_count": applied_count,
-            "remaining_count": max(meeting.capacity - applied_count, 0),
-            "start_at": meeting.start_at.astimezone(seoul),
-            "weekday": KOREAN_WEEKDAYS[meeting.start_at.astimezone(seoul).weekday()],
-            "is_registered": bool(
-                active_registration
-                and active_registration.meeting_id == meeting.meeting_id
-            ),
-            "can_apply": bool(
-                member.apply_enabled
-                and not is_open_host
-                and active_registration is None
-                and applied_count < meeting.capacity
-            ),
-            "applicants": applicants[meeting.meeting_id],
-        }
-        for meeting, applied_count in rows
-    ]
-    neighborhood_options = [
-        {"value": value, "label": value}
-        for value in sorted(
-            {item["meeting"].neighborhood for item in meeting_views}
-        )
-    ]
-    date_options = [
-        {
-            "value": value,
-            "label": f"{start.strftime('%m.%d')} ({KOREAN_WEEKDAYS[start.weekday()]})",
-        }
-        for value, start in sorted(
-            {
-                item["start_at"].date().isoformat(): item["start_at"]
-                for item in meeting_views
-            }.items()
-        )
-    ]
-    valid_neighborhoods = {option["value"] for option in neighborhood_options}
-    selected_neighborhoods = {
-        value
-        for value in (neighborhood_filters or [])
-        if len(value) <= 100 and value in valid_neighborhoods
-    }
-    valid_dates = {option["value"] for option in date_options}
-    selected_dates = {
-        value
-        for value in (date_filters or [])
-        if len(value) <= 100 and value in valid_dates
-    }
-    selected_neighborhoods_in_order = [
-        option["value"]
-        for option in neighborhood_options
-        if option["value"] in selected_neighborhoods
-    ]
-    selected_dates_in_order = [
-        option["value"]
-        for option in date_options
-        if option["value"] in selected_dates
-    ]
-    if selected_neighborhoods:
-        meeting_views = [
-            item
-            for item in meeting_views
-            if item["meeting"].neighborhood in selected_neighborhoods
-        ]
-    if selected_dates:
-        meeting_views = [
-            item
-            for item in meeting_views
-            if item["start_at"].date().isoformat() in selected_dates
-        ]
-
-    for option in neighborhood_options:
-        value = option["value"]
-        toggled = [
-            selected
-            for selected in selected_neighborhoods_in_order
-            if selected != value
-        ]
-        if value not in selected_neighborhoods:
-            toggled.append(value)
-        option["selected"] = value in selected_neighborhoods
-        option["href"] = "/meetings?" + urlencode(
-            [("group_by", group_by)]
-            + [("neighborhood", selected) for selected in toggled]
-            + [("date", selected) for selected in selected_dates_in_order]
-        )
-
-    for option in date_options:
-        value = option["value"]
-        toggled = [
-            selected for selected in selected_dates_in_order if selected != value
-        ]
-        if value not in selected_dates:
-            toggled.append(value)
-        option["selected"] = value in selected_dates
-        option["href"] = "/meetings?" + urlencode(
-            [("group_by", group_by)]
-            + [
-                ("neighborhood", selected)
-                for selected in selected_neighborhoods_in_order
-            ]
-            + [("date", selected) for selected in toggled]
-        )
-
-    preserved_filter_params = [
-        ("neighborhood", selected)
-        for selected in selected_neighborhoods_in_order
-    ] + [("date", selected) for selected in selected_dates_in_order]
-    neighborhood_clear_href = "/meetings?" + urlencode(
-        [("group_by", group_by)]
-        + [("date", selected) for selected in selected_dates_in_order]
-    )
-    date_clear_href = "/meetings?" + urlencode(
-        [("group_by", group_by)]
-        + [
-            ("neighborhood", selected)
-            for selected in selected_neighborhoods_in_order
-        ]
-    )
+    meeting_views = filter_context["meeting_views"]
+    preserved_filter_params = filter_context["preserved_filter_params"]
     view_hrefs = {
         view: "/meetings?" + urlencode(
             [("group_by", view)] + preserved_filter_params
@@ -268,16 +188,12 @@ async def meetings_page(
             "member": member,
             "groups": groups,
             "group_by": group_by,
-            "selected_neighborhoods": selected_neighborhoods_in_order,
-            "selected_dates": selected_dates_in_order,
-            "neighborhood_clear_href": neighborhood_clear_href,
-            "date_clear_href": date_clear_href,
-            "neighborhood_options": neighborhood_options,
-            "date_options": date_options,
+            **filter_context,
             "view_hrefs": view_hrefs,
             "csrf_token": csrf_token(request),
             "flash": request.session.pop("flash", None),
             "is_open_host": is_open_host,
+            "registration_open": registration_open,
         },
     )
 
@@ -294,6 +210,8 @@ async def apply(
     if not member_id:
         return RedirectResponse("/login", status_code=303)
     result = await apply_to_meeting(db, member_id, meeting_id)
+    if result == "REGISTRATION_NOT_STARTED":
+        return RedirectResponse("/waiting", status_code=303)
     messages = {
         "APPLIED": ("success", "신청이 완료되었습니다."),
         "NOT_ELIGIBLE": ("danger", "신청 가능한 사용자가 아닙니다."),
@@ -317,9 +235,13 @@ async def cancel(
     if not member_id:
         return RedirectResponse("/login", status_code=303)
     result = await cancel_registration(db, member_id)
-    request.session["flash"] = (
-        ("success", "신청을 취소했습니다.")
-        if result == "CANCELLED"
-        else ("danger", "취소할 신청이 없습니다.")
-    )
+    if result == "REGISTRATION_NOT_STARTED":
+        return RedirectResponse("/waiting", status_code=303)
+    messages = {
+        "CANCELLED": ("success", "신청을 취소했습니다."),
+        "NOT_REGISTERED": ("danger", "취소할 신청이 없습니다."),
+        "NOT_ELIGIBLE": ("danger", "신청 가능한 사용자가 아닙니다."),
+        "MEETING_NOT_OPEN": ("danger", "신청 기간에는 변경할 수 없습니다."),
+    }
+    request.session["flash"] = messages[result]
     return RedirectResponse("/meetings", status_code=303)

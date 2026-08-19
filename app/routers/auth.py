@@ -10,10 +10,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.models import LoginHistory, Member
 from app.services.session_service import client_ip, csrf_token, verify_csrf
+from app.services.registration_window import registration_is_open
 
 
 router = APIRouter()
 templates = Jinja2Templates(directory=Path(__file__).resolve().parents[1] / "templates")
+
+
+def post_login_destination(member: Member) -> str:
+    privileged = member.admin_enabled or member.host_enabled
+    return "/meetings" if privileged or registration_is_open() else "/waiting"
 
 
 def login_context(
@@ -119,7 +125,7 @@ async def login(
     request.session.clear()
     request.session["member_id"] = member.member_id
     csrf_token(request)
-    return RedirectResponse("/meetings", status_code=303)
+    return RedirectResponse(post_login_destination(member), status_code=303)
 
 
 @router.post("/login/confirm-ip")
@@ -150,7 +156,7 @@ async def confirm_ip(
     request.session.clear()
     request.session["member_id"] = member.member_id
     csrf_token(request)
-    return RedirectResponse("/meetings", status_code=303)
+    return RedirectResponse(post_login_destination(member), status_code=303)
 
 
 @router.post("/logout")

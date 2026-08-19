@@ -14,12 +14,13 @@
         <label>모듈<input name="module_name" value="{{ target.module.name if target else '' }}" required></label>
       </div>
       <div class="checkbox-row">
-        <label><input type="checkbox" name="apply_enabled" value="true" {% if not target or target.apply_enabled %}checked{% endif %}> 신청 가능</label>
-        <label><input type="checkbox" name="host_enabled" value="true" {% if target and target.host_enabled %}checked{% endif %}> Host 가능</label>
+        <label><input id="member-apply-enabled" type="checkbox" name="apply_enabled" value="true" {% if not target or target.apply_enabled %}checked{% endif %}> 신청 가능</label>
+        <label><input id="member-host-enabled" type="checkbox" name="host_enabled" value="true" {% if target and target.host_enabled %}checked{% endif %}> Host 가능</label>
         <label><input type="checkbox" name="admin_enabled" value="true" {% if target and target.admin_enabled %}checked{% endif %}> Admin</label>
         <label><input type="checkbox" name="active" value="true" {% if not target or target.active %}checked{% endif %}> 활성</label>
       </div>
       <button type="submit">저장</button>
     </form>
   </section>
+  <script src="{{ url_for('static', path='/js/member_form.js') }}" defer></script>
 {% endblock %}

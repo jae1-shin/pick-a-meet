@@ -40,10 +40,18 @@ async def test_admin_console_policy_requires_second_gate(
         return member
 
     monkeypatch.setattr(access, "require_admin_role", fake_admin_role)
-    request = SimpleNamespace(session={})
+    request = SimpleNamespace(
+        session={},
+        method="GET",
+        url=SimpleNamespace(path="/admin/meetings", query="sort=start_at"),
+    )
     with pytest.raises(HTTPException) as exc_info:
         await access.require_admin_console(request, object())
-    assert exc_info.value.status_code == 403
+    assert exc_info.value.status_code == 303
+    assert exc_info.value.headers == {"Location": "/admin/unlock"}
+    assert request.session["admin_console_next"] == (
+        "/admin/meetings?sort=start_at"
+    )
 
     request.session["admin_console_verified"] = True
     assert await access.require_admin_console(request, object()) is member

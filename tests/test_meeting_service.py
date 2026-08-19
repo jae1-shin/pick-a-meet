@@ -7,6 +7,7 @@ from app.services.meeting_service import (
     MeetingValidationError,
     parse_meeting_details,
     update_meeting_details,
+    validate_meeting_status_change,
 )
 
 
@@ -74,3 +75,11 @@ async def test_update_rejects_capacity_below_current_applicants() -> None:
     )
     with pytest.raises(MeetingValidationError):
         await update_meeting_details(FakeSession(), meeting, valid_details(capacity=2))
+
+
+def test_cancelled_status_requires_zero_applicants() -> None:
+    with pytest.raises(MeetingValidationError, match="신청자가 있는 모임"):
+        validate_meeting_status_change("CANCELLED", 1)
+
+    validate_meeting_status_change("CANCELLED", 0)
+    validate_meeting_status_change("CLOSED", 3)

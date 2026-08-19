@@ -22,4 +22,15 @@ def test_all_required_tables_are_registered() -> None:
         "meeting_host",
         "registration",
         "registration_history",
+        "registration_schedule",
     }.issubset(Base.metadata.tables)
+
+
+def test_host_and_apply_permissions_cannot_both_be_enabled() -> None:
+    member = Base.metadata.tables["member"]
+    check_sql = {
+        str(constraint.sqltext)
+        for constraint in member.constraints
+        if constraint.__class__.__name__ == "CheckConstraint"
+    }
+    assert "NOT (host_enabled AND apply_enabled)" in check_sql

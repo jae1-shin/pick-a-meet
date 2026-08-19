@@ -31,7 +31,18 @@ async def require_admin_role(request: Request, db: AsyncSession) -> Member:
 async def require_admin_console(request: Request, db: AsyncSession) -> Member:
     member = await require_admin_role(request, db)
     if not request.session.get("admin_console_verified"):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
+        if request.method == "GET":
+            destination = request.url.path
+            if request.url.query:
+                destination += f"?{request.url.query}"
+            if destination.startswith("/admin") and not destination.startswith(
+                "/admin/unlock"
+            ):
+                request.session["admin_console_next"] = destination
+        raise HTTPException(
+            status_code=status.HTTP_303_SEE_OTHER,
+            headers={"Location": "/admin/unlock"},
+        )
     return member
 
 

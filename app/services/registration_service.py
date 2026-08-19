@@ -9,11 +9,14 @@ from app.models import (
     Registration,
     RegistrationHistory,
 )
+from app.services.registration_window import registration_is_open
 
 
 async def apply_to_meeting(
     db: AsyncSession, member_id: int, meeting_id: int
 ) -> str:
+    if not registration_is_open():
+        return "REGISTRATION_NOT_STARTED"
     try:
         async with db.begin():
             member = await db.scalar(
@@ -73,6 +76,8 @@ async def apply_to_meeting(
 
 
 async def cancel_registration(db: AsyncSession, member_id: int) -> str:
+    if not registration_is_open():
+        return "REGISTRATION_NOT_STARTED"
     async with db.begin():
         member = await db.scalar(
             select(Member).where(Member.member_id == member_id).with_for_update()
@@ -86,6 +91,9 @@ async def cancel_registration(db: AsyncSession, member_id: int) -> str:
         )
         if registration is None:
             return "NOT_REGISTERED"
+        meeting = await db.get(Meeting, registration.meeting_id)
+        if meeting is None or meeting.status != "OPEN":
+            return "MEETING_NOT_OPEN"
         meeting_id = registration.meeting_id
         await db.delete(registration)
         db.add(

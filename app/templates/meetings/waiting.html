@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}신청 대기 · Pick a Meet{% endblock %}
+{% block content %}
+  {% if preview_mode %}<div class="list-toolbar management-toolbar"><span></span><a href="/admin/registration-settings">신청 설정으로</a></div>{% endif %}
+  <section class="card waiting-card" data-remaining-ms="{{ remaining_ms }}" data-auto-redirect="{{ 'false' if preview_mode else 'true' }}">
+    <h1>모임 신청 시작 전입니다. 잠시만 기다려주세요.</h1>
+    <p class="muted">신청 시작 시각이 되면 모임 신청 화면으로 자동 이동합니다.</p>
+    <p class="waiting-time">신청 시작: {{ opens_at.strftime('%Y.%m.%d') }} ({{ weekday }}) {{ opens_at|korean_time }}</p>
+    <p class="waiting-remaining">잔여 시간: <strong id="waiting-countdown">계산 중</strong></p>
+  </section>
+  {% include "meetings/_filters.html" %}
+  <div class="meeting-grid waiting-meeting-grid">
+    {% for item in meeting_views %}
+      <article class="card meeting-card">
+        {% set meeting = item.meeting %}{% set start_at = item.start_at %}{% set weekday = item.weekday %}{% set applied_count = item.applied_count %}{% set remaining_count = item.remaining_count %}{% set applicants = item.applicants %}{% include "meetings/_card_details.html" %}
+      </article>
+    {% else %}<p class="muted">현재 공개된 모임이 없습니다.</p>{% endfor %}
+  </div>
+  <script src="{{ url_for('static', path='/js/waiting.js') }}" defer></script>
+{% endblock %}

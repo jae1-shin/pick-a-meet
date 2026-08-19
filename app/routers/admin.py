@@ -1,4 +1,5 @@
 import hmac
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from urllib.parse import urlencode
 from zoneinfo import ZoneInfo
@@ -13,14 +14,37 @@ from sqlalchemy.orm import joinedload
 
 from app.config import get_settings
 from app.database import get_db
-from app.models import Meeting, MeetingHost, Member, Module, Part, Registration
+from app.models import (
+    Meeting,
+    MeetingHost,
+    Member,
+    Module,
+    Part,
+    Registration,
+)
 from app.policies.access import require_admin_console, require_admin_role
 from app.services.meeting_service import (
     MeetingValidationError,
+    meeting_registration_count,
     parse_meeting_details,
     update_meeting_details,
+    validate_meeting_status_change,
 )
-from app.services.meeting_view import KOREAN_WEEKDAYS, korean_time, load_applicants
+from app.services.meeting_view import (
+    KOREAN_WEEKDAYS,
+    build_meeting_filter_context,
+    korean_time,
+    load_applicants,
+    load_public_meeting_views,
+)
+from app.services.member_service import MemberValidationError, validate_member_permissions
+from app.services.registration_window import (
+    RegistrationWindowValidationError,
+    parse_registration_opening,
+    registration_is_open,
+    registration_opens_at,
+    update_registration_window,
+)
 from app.services.session_service import csrf_token, verify_csrf
 
 
@@ -28,6 +52,7 @@ router = APIRouter(prefix="/admin", tags=["admin"])
 templates = Jinja2Templates(directory=Path(__file__).resolve().parents[1] / "templates")
 templates.env.filters["korean_time"] = korean_time
 settings = get_settings()
+SEOUL = ZoneInfo("Asia/Seoul")
 
 
 async def get_or_create_module(
@@ -149,7 +174,127 @@ async def admin_unlock(
             status_code=401,
         )
     request.session["admin_console_verified"] = True
-    return RedirectResponse("/admin", status_code=303)
+    destination = request.session.pop("admin_console_next", "/admin")
+    if not destination.startswith("/admin") or destination.startswith(
+        "/admin/unlock"
+    ):
+        destination = "/admin"
+    return RedirectResponse(destination, status_code=303)
+
+
+def registration_settings_context(
+    request: Request,
+    admin: Member,
+    error: str | None = None,
+) -> dict[str, object]:
+    opens_at = registration_opens_at()
+    local_opens_at = opens_at.astimezone(SEOUL) if opens_at else None
+    default_at = local_opens_at or datetime.now(SEOUL).replace(
+        minute=0, second=0, microsecond=0
+    )
+    return {
+        "request": request,
+        "member": admin,
+        "csrf_token": csrf_token(request),
+        "opens_at": local_opens_at,
+        "registration_is_open": registration_is_open(),
+        "open_date": default_at.date().isoformat(),
+        "open_hour": default_at.hour,
+        "open_minute": default_at.minute,
+        "weekdays": KOREAN_WEEKDAYS,
+        "error": error,
+        "flash": request.session.pop("flash", None),
+    }
+
+
+@router.get("/registration-settings", response_class=HTMLResponse)
+async def admin_registration_settings_page(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+) -> HTMLResponse:
+    admin = await require_admin_console(request, db)
+    return templates.TemplateResponse(
+        request=request,
+        name="admin/registration_settings.html",
+        context=registration_settings_context(request, admin),
+    )
+
+
+@router.get("/registration-settings/waiting-preview", response_class=HTMLResponse)
+async def admin_waiting_preview(
+    request: Request,
+    neighborhood_filters: list[str] | None = Query(None, alias="neighborhood"),
+    date_filters: list[str] | None = Query(None, alias="date"),
+    db: AsyncSession = Depends(get_db),
+) -> HTMLResponse:
+    admin = await require_admin_console(request, db)
+    now = datetime.now(timezone.utc)
+    opens_at = registration_opens_at()
+    preview_at = opens_at if opens_at and opens_at > now else now + timedelta(minutes=10)
+    local_opens_at = preview_at.astimezone(SEOUL)
+    meeting_views, _ = await load_public_meeting_views(
+        db, admin, registration_open=False
+    )
+    filter_context = build_meeting_filter_context(
+        meeting_views,
+        neighborhood_filters=neighborhood_filters,
+        date_filters=date_filters,
+        base_path="/admin/registration-settings/waiting-preview",
+    )
+    return templates.TemplateResponse(
+        request=request,
+        name="meetings/waiting.html",
+        context={
+            "member": admin,
+            "csrf_token": csrf_token(request),
+            "opens_at": local_opens_at,
+            "weekday": KOREAN_WEEKDAYS[local_opens_at.weekday()],
+            "remaining_ms": max(
+                int((preview_at - now).total_seconds() * 1000), 0
+            ),
+            **filter_context,
+            "preview_mode": True,
+        },
+    )
+
+
+@router.post("/registration-settings", response_class=HTMLResponse)
+async def admin_registration_settings(
+    request: Request,
+    mode: str = Form("scheduled"),
+    open_date: str = Form(""),
+    open_hour: int = Form(0),
+    open_minute: int = Form(0),
+    csrf: str = Form(...),
+    db: AsyncSession = Depends(get_db),
+) -> HTMLResponse:
+    verify_csrf(request, csrf)
+    admin = await require_admin_console(request, db)
+    try:
+        opens_at = parse_registration_opening(
+            mode=mode,
+            open_date=open_date,
+            open_hour=open_hour,
+            open_minute=open_minute,
+        )
+    except RegistrationWindowValidationError as exc:
+        return templates.TemplateResponse(
+            request=request,
+            name="admin/registration_settings.html",
+            context=registration_settings_context(
+                request, admin, str(exc)
+            ),
+            status_code=422,
+        )
+
+    await update_registration_window(db, opens_at)
+    request.session["flash"] = (
+        "success",
+        "신청을 즉시 시작하도록 설정했습니다."
+        if opens_at is None
+        else "신청 시작 일시를 저장했습니다.",
+    )
+    return RedirectResponse("/admin/registration-settings", status_code=303)
 
 
 def member_form_context(
@@ -197,6 +342,13 @@ async def admin_member_new(
     verify_csrf(request, csrf)
     admin = await require_admin_console(request, db)
     try:
+        await validate_member_permissions(
+            db,
+            member_id=None,
+            apply_enabled=apply_enabled,
+            host_enabled=host_enabled,
+            active=active,
+        )
         module = await get_or_create_module(db, part_name, module_name)
         db.add(
             Member(
@@ -211,6 +363,13 @@ async def admin_member_new(
             )
         )
         await db.commit()
+    except MemberValidationError as exc:
+        return templates.TemplateResponse(
+            request=request,
+            name="admin/member_form.html",
+            context=member_form_context(request, admin, error=str(exc)),
+            status_code=422,
+        )
     except IntegrityError:
         await db.rollback()
         return templates.TemplateResponse(
@@ -271,6 +430,13 @@ async def admin_member_edit(
     admin = await require_admin_console(request, db)
     target = await load_member(db, member_id)
     try:
+        await validate_member_permissions(
+            db,
+            member_id=target.member_id,
+            apply_enabled=apply_enabled,
+            host_enabled=host_enabled,
+            active=active,
+        )
         module = await get_or_create_module(db, part_name, module_name)
         target.login_id = login_id.strip()
         target.employee_no = employee_no.strip()
@@ -281,6 +447,13 @@ async def admin_member_edit(
         target.admin_enabled = admin_enabled
         target.active = active
         await db.commit()
+    except MemberValidationError as exc:
+        return templates.TemplateResponse(
+            request=request,
+            name="admin/member_form.html",
+            context=member_form_context(request, admin, target, str(exc)),
+            status_code=422,
+        )
     except IntegrityError:
         await db.rollback()
         target = await load_member(db, member_id)
@@ -537,7 +710,9 @@ async def admin_meeting_edit(
         )
         host = await db.get(Member, host_id)
         validate_admin_meeting_fields(meeting_status, host)
-        await update_meeting_details(db, target, details)
+        applied_count = await meeting_registration_count(db, target.meeting_id)
+        validate_meeting_status_change(meeting_status, applied_count)
+        await update_meeting_details(db, target, details, applied_count)
         target.status = meeting_status
         meeting_host = await db.get(MeetingHost, meeting_id)
         if meeting_host is None:

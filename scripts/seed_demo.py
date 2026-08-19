@@ -165,7 +165,7 @@ async def seed() -> None:
                     module_id=module.module_id,
                     admin_enabled=item["admin_enabled"],
                     host_enabled=item["host_enabled"],
-                    apply_enabled=True,
+                    apply_enabled=not item["host_enabled"],
                     active=item.get("active", True),
                 )
                 session.add(member)
@@ -176,7 +176,7 @@ async def seed() -> None:
                 member.module_id = module.module_id
                 member.admin_enabled = item["admin_enabled"]
                 member.host_enabled = item["host_enabled"]
-                member.apply_enabled = True
+                member.apply_enabled = not item["host_enabled"]
                 member.active = item.get("active", True)
             users[item["login_id"]] = member
 

@@ -1,8 +1,11 @@
-from sqlalchemy import select
+from urllib.parse import urlencode
+from zoneinfo import ZoneInfo
+
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
-from app.models import Member, Module, Registration
+from app.models import Meeting, MeetingHost, Member, Module, Registration
 
 
 KOREAN_WEEKDAYS = ("월", "화", "수", "목", "금", "토", "일")
@@ -32,3 +35,178 @@ async def load_applicants(
     for meeting_id, applicant in rows:
         applicants[meeting_id].append(applicant)
     return applicants
+
+
+async def load_public_meeting_views(
+    db: AsyncSession,
+    member: Member,
+    *,
+    registration_open: bool,
+) -> tuple[list[dict[str, object]], bool]:
+    count_subquery = (
+        select(Registration.meeting_id, func.count().label("applied_count"))
+        .group_by(Registration.meeting_id)
+        .subquery()
+    )
+    rows = (
+        await db.execute(
+            select(Meeting, func.coalesce(count_subquery.c.applied_count, 0))
+            .outerjoin(
+                count_subquery,
+                count_subquery.c.meeting_id == Meeting.meeting_id,
+            )
+            .where(Meeting.status.in_(("OPEN", "CLOSED", "CANCELLED")))
+            .order_by(Meeting.start_at)
+        )
+    ).all()
+    active_registration = await db.scalar(
+        select(Registration).where(Registration.member_id == member.member_id)
+    )
+    is_open_host = bool(
+        await db.scalar(
+            select(func.count())
+            .select_from(MeetingHost)
+            .join(Meeting, Meeting.meeting_id == MeetingHost.meeting_id)
+            .where(
+                MeetingHost.member_id == member.member_id,
+                Meeting.status == "OPEN",
+            )
+        )
+    )
+    applicants = await load_applicants(
+        db, [meeting.meeting_id for meeting, _ in rows]
+    )
+    seoul = ZoneInfo("Asia/Seoul")
+    views = []
+    for meeting, applied_count in rows:
+        start_at = meeting.start_at.astimezone(seoul)
+        views.append(
+            {
+                "meeting": meeting,
+                "applied_count": applied_count,
+                "remaining_count": max(meeting.capacity - applied_count, 0),
+                "start_at": start_at,
+                "weekday": KOREAN_WEEKDAYS[start_at.weekday()],
+                "is_registered": bool(
+                    active_registration
+                    and active_registration.meeting_id == meeting.meeting_id
+                ),
+                "can_apply": bool(
+                    meeting.status == "OPEN"
+                    and registration_open
+                    and member.apply_enabled
+                    and not is_open_host
+                    and active_registration is None
+                    and applied_count < meeting.capacity
+                ),
+                "applicants": applicants[meeting.meeting_id],
+            }
+        )
+    return views, is_open_host
+
+
+def build_meeting_filter_context(
+    meeting_views: list[dict[str, object]],
+    *,
+    neighborhood_filters: list[str] | None,
+    date_filters: list[str] | None,
+    base_path: str,
+    base_params: list[tuple[str, str]] | None = None,
+) -> dict[str, object]:
+    fixed_params = base_params or []
+    neighborhood_options = [
+        {"value": value, "label": value}
+        for value in sorted(
+            {item["meeting"].neighborhood for item in meeting_views}
+        )
+    ]
+    date_options = [
+        {
+            "value": value,
+            "label": f"{start.strftime('%m.%d')} ({KOREAN_WEEKDAYS[start.weekday()]})",
+        }
+        for value, start in sorted(
+            {
+                item["start_at"].date().isoformat(): item["start_at"]
+                for item in meeting_views
+            }.items()
+        )
+    ]
+    selected_neighborhoods = {
+        value
+        for value in (neighborhood_filters or [])
+        if len(value) <= 100
+        and value in {option["value"] for option in neighborhood_options}
+    }
+    selected_dates = {
+        value
+        for value in (date_filters or [])
+        if len(value) <= 100
+        and value in {option["value"] for option in date_options}
+    }
+    neighborhoods_in_order = [
+        option["value"]
+        for option in neighborhood_options
+        if option["value"] in selected_neighborhoods
+    ]
+    dates_in_order = [
+        option["value"]
+        for option in date_options
+        if option["value"] in selected_dates
+    ]
+
+    def url(params: list[tuple[str, str]]) -> str:
+        query = urlencode(fixed_params + params)
+        return f"{base_path}?{query}" if query else base_path
+
+    for option in neighborhood_options:
+        value = option["value"]
+        toggled = [item for item in neighborhoods_in_order if item != value]
+        if value not in selected_neighborhoods:
+            toggled.append(value)
+        option["selected"] = value in selected_neighborhoods
+        option["href"] = url(
+            [("neighborhood", item) for item in toggled]
+            + [("date", item) for item in dates_in_order]
+        )
+    for option in date_options:
+        value = option["value"]
+        toggled = [item for item in dates_in_order if item != value]
+        if value not in selected_dates:
+            toggled.append(value)
+        option["selected"] = value in selected_dates
+        option["href"] = url(
+            [("neighborhood", item) for item in neighborhoods_in_order]
+            + [("date", item) for item in toggled]
+        )
+
+    filtered_views = meeting_views
+    if selected_neighborhoods:
+        filtered_views = [
+            item
+            for item in filtered_views
+            if item["meeting"].neighborhood in selected_neighborhoods
+        ]
+    if selected_dates:
+        filtered_views = [
+            item
+            for item in filtered_views
+            if item["start_at"].date().isoformat() in selected_dates
+        ]
+    return {
+        "meeting_views": filtered_views,
+        "selected_neighborhoods": neighborhoods_in_order,
+        "selected_dates": dates_in_order,
+        "neighborhood_options": neighborhood_options,
+        "date_options": date_options,
+        "neighborhood_clear_href": url(
+            [("date", item) for item in dates_in_order]
+        ),
+        "date_clear_href": url(
+            [("neighborhood", item) for item in neighborhoods_in_order]
+        ),
+        "preserved_filter_params": [
+            ("neighborhood", item) for item in neighborhoods_in_order
+        ]
+        + [("date", item) for item in dates_in_order],
+    }

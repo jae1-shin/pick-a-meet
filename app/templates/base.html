@@ -12,7 +12,7 @@
       <nav class="container" aria-label="주 메뉴">
         <div class="gnb-left">
           <a class="brand" href="/">Pick a Meet</a>
-          {% if member %}<div class="gnb-links">{% if member.host_enabled %}<div class="gnb-menu"><a class="gnb-menu-trigger" href="/host" aria-haspopup="true">Host</a><div class="gnb-dropdown"><a href="/host">내가 맡은 모임</a></div></div>{% endif %}{% if member.admin_enabled %}<div class="gnb-menu"><a class="gnb-menu-trigger" href="/admin" aria-haspopup="true">Admin</a><div class="gnb-dropdown"><a href="/admin">사용자 관리</a><a href="/admin/meetings">모임 관리</a></div></div>{% endif %}</div>{% endif %}
+          {% if member %}<div class="gnb-links">{% if member.host_enabled %}<div class="gnb-menu"><a class="gnb-menu-trigger" href="/host" aria-haspopup="true">Host</a><div class="gnb-dropdown"><a href="/host">내가 맡은 모임</a></div></div>{% endif %}{% if member.admin_enabled %}<div class="gnb-menu"><a class="gnb-menu-trigger" href="/admin" aria-haspopup="true">Admin</a><div class="gnb-dropdown"><a href="/admin">사용자 관리</a><a href="/admin/meetings">모임 관리</a><a href="/admin/registration-settings">신청 설정</a></div></div>{% endif %}</div>{% endif %}
         </div>
         {% if member %}
           <div class="gnb-user">

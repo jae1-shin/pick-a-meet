@@ -2,10 +2,7 @@
 {% block content %}
   <section>
     <div class="list-toolbar"><h2>모임 신청</h2><div class="view-toggle"><a class="{{ 'active' if group_by == 'all' else '' }}" href="{{ view_hrefs.all }}">전체</a><a class="{{ 'active' if group_by == 'neighborhood' else '' }}" href="{{ view_hrefs.neighborhood }}">동네별</a><a class="{{ 'active' if group_by == 'date' else '' }}" href="{{ view_hrefs.date }}">일시별</a></div></div>
-    <div class="meeting-filters">
-      <div class="filter-row"><span class="filter-label">동네</span><nav class="filter-chips" aria-label="동네 필터">{% for option in neighborhood_options %}<a class="chip {{ 'active' if option.selected else '' }}" href="{{ option.href }}" aria-pressed="{{ 'true' if option.selected else 'false' }}">{{ option.label }}</a>{% endfor %}{% if selected_neighborhoods %}<a class="clear-filter" href="{{ neighborhood_clear_href }}">필터 해제</a>{% endif %}</nav></div>
-      <div class="filter-row"><span class="filter-label">일시</span><nav class="filter-chips" aria-label="일시 필터">{% for option in date_options %}<a class="chip {{ 'active' if option.selected else '' }}" href="{{ option.href }}" aria-pressed="{{ 'true' if option.selected else 'false' }}">{{ option.label }}</a>{% endfor %}{% if selected_dates %}<a class="clear-filter" href="{{ date_clear_href }}">필터 해제</a>{% endif %}</nav></div>
-    </div>
+    {% include "meetings/_filters.html" %}
     {% for group in groups %}
       <section class="meeting-group">
         {% if group.title %}<h3 class="group-title">{{ group.title }}</h3>{% endif %}
@@ -13,12 +10,20 @@
       {% for item in group['items'] %}
         <article class="card meeting-card">
           {% set meeting = item.meeting %}{% set start_at = item.start_at %}{% set weekday = item.weekday %}{% set applied_count = item.applied_count %}{% set remaining_count = item.remaining_count %}{% set applicants = item.applicants %}{% include "meetings/_card_details.html" %}
-          {% if item.is_registered %}
+          {% if not is_open_host %}
+          {% if item.meeting.status == 'CANCELLED' %}
+            <button disabled>취소되었습니다.</button>
+          {% elif item.meeting.status == 'CLOSED' %}
+            <button disabled>신청 기간이 아닙니다.</button>
+          {% elif not registration_open %}
+            <button disabled>신청 시간이 아닙니다.</button>
+          {% elif item.is_registered %}
             <form method="post" action="/registrations/cancel"><input type="hidden" name="csrf" value="{{ csrf_token }}"><button class="secondary" type="submit">신청 취소</button></form>
           {% elif item.can_apply %}
             <form method="post" action="/meetings/{{ item.meeting.meeting_id }}/apply"><input type="hidden" name="csrf" value="{{ csrf_token }}"><button type="submit">신청하기</button></form>
-          {% elif not is_open_host %}
+          {% else %}
             <button disabled>{% if item.remaining_count == 0 %}마감{% elif not member.apply_enabled %}신청 불가{% else %}다른 모임 신청 중{% endif %}</button>
+          {% endif %}
           {% endif %}
         </article>
       {% endfor %}

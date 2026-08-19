@@ -9,8 +9,9 @@ from sqlalchemy import text
 from starlette.middleware.sessions import SessionMiddleware
 
 from app.config import get_settings
-from app.database import engine
+from app.database import SessionFactory, engine
 from app.routers import admin, auth, host, pages
+from app.services.registration_window import load_registration_window
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -21,6 +22,8 @@ templates = Jinja2Templates(directory=BASE_DIR / "templates")
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     settings.image_storage_path.mkdir(parents=True, exist_ok=True)
+    async with SessionFactory() as session:
+        await load_registration_window(session)
     yield
     await engine.dispose()
 

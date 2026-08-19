@@ -8,6 +8,7 @@ from app.models.core import (
     Part,
     Registration,
     RegistrationHistory,
+    RegistrationSchedule,
 )
 
 __all__ = [
@@ -20,4 +21,5 @@ __all__ = [
     "Part",
     "Registration",
     "RegistrationHistory",
+    "RegistrationSchedule",
 ]

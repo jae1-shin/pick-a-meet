@@ -50,6 +50,12 @@ class Module(Base):
 
 class Member(TimestampMixin, Base):
     __tablename__ = "member"
+    __table_args__ = (
+        CheckConstraint(
+            "NOT (host_enabled AND apply_enabled)",
+            name="host_without_apply",
+        ),
+    )
 
     member_id: Mapped[int] = mapped_column(primary_key=True)
     login_id: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
@@ -85,6 +91,16 @@ class LoginHistory(Base):
     login_ip: Mapped[str] = mapped_column(String(64), nullable=False)
     ip_changed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     login_result: Mapped[str] = mapped_column(String(40), nullable=False)
+
+
+class RegistrationSchedule(TimestampMixin, Base):
+    __tablename__ = "registration_schedule"
+    __table_args__ = (
+        CheckConstraint("schedule_id = 1", name="singleton"),
+    )
+
+    schedule_id: Mapped[int] = mapped_column(primary_key=True, default=1)
+    opens_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class Meeting(TimestampMixin, Base):

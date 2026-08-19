@@ -70,15 +70,30 @@ def parse_meeting_details(
     )
 
 
-async def update_meeting_details(
-    db: AsyncSession, meeting: Meeting, details: MeetingDetails
-) -> None:
-    applied_count = await db.scalar(
+async def meeting_registration_count(db: AsyncSession, meeting_id: int) -> int:
+    return await db.scalar(
         select(func.count())
         .select_from(Registration)
-        .where(Registration.meeting_id == meeting.meeting_id)
-    )
-    if details.capacity < (applied_count or 0):
+        .where(Registration.meeting_id == meeting_id)
+    ) or 0
+
+
+def validate_meeting_status_change(status: str, applied_count: int) -> None:
+    if status == "CANCELLED" and applied_count > 0:
+        raise MeetingValidationError(
+            "신청자가 있는 모임은 취소 상태로 변경할 수 없습니다."
+        )
+
+
+async def update_meeting_details(
+    db: AsyncSession,
+    meeting: Meeting,
+    details: MeetingDetails,
+    applied_count: int | None = None,
+) -> None:
+    if applied_count is None:
+        applied_count = await meeting_registration_count(db, meeting.meeting_id)
+    if details.capacity < applied_count:
         raise MeetingValidationError(
             "정원은 현재 신청 인원보다 작게 설정할 수 없습니다."
         )

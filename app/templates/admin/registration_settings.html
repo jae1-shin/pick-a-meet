@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}신청 설정 · Pick a Meet{% endblock %}
+{% block content %}
+  <div class="list-toolbar management-toolbar"><div><h2>신청 설정</h2><p class="toolbar-subtitle">전체 사용자의 모임 신청 시작 시각을 설정합니다.</p></div><a class="button secondary" href="/admin/registration-settings/waiting-preview">대기 화면 미리보기</a></div>
+  <section class="card registration-settings-card">
+    <div class="registration-setting-status">
+      <span>현재 상태</span>
+      <strong>{{ '신청 가능' if registration_is_open else '신청 시작 전' }}</strong>
+      {% if opens_at %}<small>{{ opens_at.strftime('%Y.%m.%d') }} ({{ weekdays[opens_at.weekday()] }}) {{ opens_at|korean_time }}부터</small>{% else %}<small>시작 시각 제한 없음</small>{% endif %}
+    </div>
+    <form method="post" action="/admin/registration-settings" class="form-stack">
+      <input type="hidden" name="csrf" value="{{ csrf_token }}">
+      <label>신청 시작 일시
+        <span class="datetime-picker">
+          <input type="date" name="open_date" value="{{ open_date }}" required>
+          <select name="open_hour" aria-label="시">{% for hour in range(24) %}<option value="{{ hour }}" {% if open_hour == hour %}selected{% endif %}>{{ '%02d'|format(hour) }}시</option>{% endfor %}</select>
+          <select name="open_minute" aria-label="분">{% for minute in range(0, 60, 10) %}<option value="{{ minute }}" {% if open_minute == minute %}selected{% endif %}>{{ '%02d'|format(minute) }}분</option>{% endfor %}</select>
+        </span>
+      </label>
+      <div class="form-submit-area">
+        <button type="submit" name="mode" value="scheduled">시작 일시 저장</button>
+        <button class="secondary" type="submit" name="mode" value="immediate" formnovalidate>즉시 신청 허용</button>
+        {% if error %}<small class="form-validation-error">{{ error }}</small>{% endif %}
+      </div>
+    </form>
+  </section>
+{% endblock %}
