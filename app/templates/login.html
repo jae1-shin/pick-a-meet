@@ -2,14 +2,13 @@
 {% block title %}로그인 · Pick a Meet{% endblock %}
 {% block content %}
   <section class="auth-card card">
-    <p class="eyebrow">PICK A MEET</p>
     <h1>로그인</h1>
-    <p class="muted">사내 ID와 사번을 입력해주세요.</p>
+    <p class="muted">Knox ID와 사번을 입력해주세요.</p>
     {% if error %}<div class="alert" role="alert">{{ error }}</div>{% endif %}
     <form method="post" action="/login" class="form-stack">
       <input type="hidden" name="csrf" value="{{ csrf_token }}">
-      <label>ID<input name="login_id" autocomplete="username" required autofocus></label>
-      <label>사번<input name="employee_no" type="password" autocomplete="current-password" required></label>
+      <label>ID<input name="login_id" value="{{ login_id }}" autocomplete="username" required autofocus></label>
+      <label>사번<input name="employee_no" value="{{ employee_no }}" type="password" autocomplete="current-password" required></label>
       <button type="submit">로그인</button>
     </form>
     <details class="demo-accounts">

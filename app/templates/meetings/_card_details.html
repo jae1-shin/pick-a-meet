@@ -1,4 +1,4 @@
-<p class="eyebrow">{{ start_at.strftime('%Y.%m.%d') }} ({{ weekday }}) {{ start_at.strftime('%H:%M') }}</p>
+<p class="eyebrow">{{ start_at.strftime('%Y.%m.%d') }} ({{ weekday }}) {{ start_at|korean_time }}</p>
 <div class="meeting-title-row">
   <h3>{{ meeting.place_name }}</h3>
   {% if meeting.place_url %}<a class="map-icon" href="{{ meeting.place_url }}" target="_blank" rel="noopener noreferrer" aria-label="{{ meeting.place_name }} 지도 열기" title="지도 열기"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a7 7 0 0 0-7 7c0 5.2 7 13 7 13s7-7.8 7-13a7 7 0 0 0-7-7Zm0 9.5A2.5 2.5 0 1 1 12 6a2.5 2.5 0 0 1 0 5.5Z"/></svg></a>{% endif %}

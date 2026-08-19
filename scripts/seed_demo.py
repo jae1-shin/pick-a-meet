@@ -68,6 +68,7 @@ DEMO_USERS = (
         "module": module,
         "admin_enabled": False,
         "host_enabled": False,
+        "active": index != 6,
     }
     for index, (name, part, module) in enumerate(MEMBER_PROFILES, start=1)
 )
@@ -165,7 +166,7 @@ async def seed() -> None:
                     admin_enabled=item["admin_enabled"],
                     host_enabled=item["host_enabled"],
                     apply_enabled=True,
-                    active=True,
+                    active=item.get("active", True),
                 )
                 session.add(member)
                 await session.flush()
@@ -176,7 +177,7 @@ async def seed() -> None:
                 member.admin_enabled = item["admin_enabled"]
                 member.host_enabled = item["host_enabled"]
                 member.apply_enabled = True
-                member.active = True
+                member.active = item.get("active", True)
             users[item["login_id"]] = member
 
         seoul = ZoneInfo("Asia/Seoul")
@@ -226,7 +227,7 @@ async def seed() -> None:
             ("member03", "광교 모임 라운지"),
             ("member04", "서울숲 브런치 테이블"),
             ("member05", "강남 보드게임 카페"),
-            ("member06", "광교호수공원 러닝"),
+            ("member08", "광교호수공원 러닝"),
             ("member07", "수원 쿠킹 스튜디오"),
         )
         for login_id, place_name in sample_assignments:

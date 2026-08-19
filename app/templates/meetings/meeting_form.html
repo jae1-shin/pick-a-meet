@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}{{ form_title }} · Pick a Meet{% endblock %}
+{% block content %}
+  {% set local_start = target.start_at.astimezone(seoul) if target else none %}
+  <div class="list-toolbar management-toolbar"><h2>{{ form_title }}</h2><a href="{{ back_url }}">{{ back_label }}</a></div>
+  <div class="meeting-editor-layout">
+    <section class="card meeting-editor-form">
+      <form method="post" class="form-stack" id="meeting-form" data-applied-count="{{ applied_count }}" data-server-error="{{ error or '' }}">
+        <input type="hidden" name="csrf" value="{{ csrf_token }}">
+        <div class="form-grid meeting-form-grid">
+          <label class="field-wide">장소<input name="place_name" value="{{ target.place_name if target else '' }}" required></label>
+          <label class="field-wide">장소 바로가기 링크<input name="place_url" type="url" placeholder="https://map.naver.com/..." value="{{ target.place_url if target and target.place_url else '' }}"></label>
+          <label>동네<input name="neighborhood" value="{{ target.neighborhood if target else '' }}" placeholder="예: 광교" required></label>
+          <label>대표 메뉴<input name="representative_menu" value="{{ target.representative_menu if target else '' }}" required></label>
+          <label>시작 일시<span class="datetime-picker"><input id="start-date" type="date" value="{{ local_start.strftime('%Y-%m-%d') if local_start else '' }}" required><select id="start-hour" aria-label="시" required>{% for hour in range(24) %}<option value="{{ '%02d'|format(hour) }}" {% if local_start and local_start.hour == hour %}selected{% endif %}>{{ '%02d'|format(hour) }}시</option>{% endfor %}</select><select id="start-minute" aria-label="분" required>{% for minute in range(0, 60, 10) %}<option value="{{ '%02d'|format(minute) }}" {% if local_start and local_start.minute == minute %}selected{% endif %}>{{ '%02d'|format(minute) }}분</option>{% endfor %}</select><input id="start-at" name="start_at" type="hidden" value="{{ local_start.strftime('%Y-%m-%dT%H:%M') if local_start else '' }}"></span></label>
+          <label>정원<input name="capacity" type="number" min="{{ applied_count if applied_count > 0 else 1 }}" value="{{ target.capacity if target else 6 }}" required></label>
+          {% if is_admin_form %}
+            <label>상태<select name="meeting_status" required>{% for value in ['DRAFT','OPEN','CLOSED','CANCELLED'] %}<option value="{{ value }}" {% if target and target.status == value %}selected{% elif not target and value == 'DRAFT' %}selected{% endif %}>{{ value }}</option>{% endfor %}</select></label>
+            <label>Host<select name="host_id" required><option value="">선택</option>{% for host in hosts %}<option value="{{ host.member_id }}" {% if host_id == host.member_id %}selected{% endif %}>{{ host.name }} ({{ host.login_id }})</option>{% endfor %}</select></label>
+          {% endif %}
+          <label class="field-wide">호스트의 한마디<textarea name="host_message" rows="3" required>{{ target.host_message if target else '' }}</textarea></label>
+        </div>
+        <div class="form-submit-area">
+          <button type="submit" id="meeting-save">저장</button>
+          <small class="form-validation-error" id="meeting-form-error" role="status">{{ error or '' }}</small>
+        </div>
+      </form>
+    </section>
+
+    <aside class="meeting-preview" aria-label="모임 카드 미리보기">
+      <p class="preview-label">실시간 미리보기</p>
+      <article class="card meeting-card preview-meeting-card">
+        <p class="eyebrow" id="preview-datetime">일시를 입력해주세요</p>
+        <div class="meeting-title-row"><h3 id="preview-place">장소를 입력해주세요</h3><a class="map-icon" id="preview-map" href="#" target="_blank" rel="noopener noreferrer" aria-label="지도 열기" title="지도 열기" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a7 7 0 0 0-7 7c0 5.2 7 13 7 13s7-7.8 7-13a7 7 0 0 0-7-7Zm0 9.5A2.5 2.5 0 1 1 12 6a2.5 2.5 0 0 1 0 5.5Z"/></svg></a></div>
+        <dl class="meeting-facts"><div><dt>동네</dt><dd id="preview-neighborhood">동네</dd></div><div><dt>대표 메뉴</dt><dd id="preview-menu">대표 메뉴</dd></div></dl>
+        <div class="host-message"><span>호스트의 한마디</span><blockquote id="preview-message">“한마디를 입력해주세요”</blockquote></div>
+        <div class="capacity"><span>신청 {{ applied_count }} / <span id="preview-capacity">{{ target.capacity if target else 6 }}</span></span><strong>잔여 <span id="preview-remaining">{{ (target.capacity - applied_count) if target else 6 }}</span>명</strong></div>
+      </article>
+    </aside>
+  </div>
+  <script src="{{ url_for('static', path='/js/meeting_form.js') }}" defer></script>
+{% endblock %}

@@ -1,6 +1,6 @@
 # Pick a Meet
 
-사내 구성원 약 200명이 장소·시간·설명을 확인하고 모임 하나에 선착순으로 신청하는 서비스입니다. FastAPI, Jinja2, HTMX, Bootstrap, PostgreSQL을 하나의 애플리케이션으로 구성하고, 로컬 WSL에서 검증한 동일 소스를 사내 Kubernetes 환경으로 옮기는 것을 목표로 합니다.
+사내 구성원 약 200명이 장소·시간·동네·대표 메뉴·호스트의 한마디를 확인하고 모임 하나에 선착순으로 신청하는 서비스입니다. FastAPI, Jinja2, 순수 CSS/JavaScript, PostgreSQL을 하나의 애플리케이션으로 구성하고, 로컬 WSL에서 검증한 동일 소스를 사내 Kubernetes 환경으로 옮기는 것을 목표로 합니다.
 
 GitHub repository 이름은 `pick-a-meet`을 사용합니다.
 
@@ -11,11 +11,14 @@ GitHub repository 이름은 `pick-a-meet`을 사용합니다.
 - 완료: 프로젝트 골격, 환경변수 설정, 비동기 PostgreSQL 연결, 서명 Cookie Session, Jinja2 화면
 - 완료: DB 모델과 Alembic migration, 로그인/IP 변경 확인, Admin/Host 권한, 개발용 seed
 - 완료: 모임 전체·동네별·일시별 보기, 동네/날짜 복수 필터, 신청자 tooltip, 신청·취소
-- 완료: Host 본인 모임 조회·편집·신청자 명단, Admin 사용자·모임 CRUD와 테이블 헤더 정렬
+- 완료: Host 본인 모임 조회·공통 편집 폼·실시간 카드 미리보기·신청자 명단 클립보드 복사
+- 완료: Admin 사용자·모임 CRUD, 테이블 헤더 정렬, Host/Admin 겸임 권한과 GNB dropdown
+- 완료: 신청·취소·저장·클립보드 결과를 공통 toast로 표시하고 폼 오류는 입력 화면 아래에 표시
+- 완료: 비활성 계정 로그인 차단 및 별도 안내, 실패 시 입력한 ID/사번 유지
 - 완료: Gowun Dodum 글꼴과 SIL OFL 라이선스를 `app/static/fonts/`에 내장
 - 완료: `/health/live`, `/health/ready`, PostgreSQL Docker Compose, Python 테스트 환경
 - 진행 예정: HTMX polling, 동시성 부하 테스트, K8s manifest
-- 아직 Bootstrap/HTMX 정적 파일은 포함하지 않았습니다. 최종 사내 반입 전에 버전을 고정해 `app/static/vendor/`에 저장해야 합니다.
+- 아직 HTMX polling은 포함하지 않았습니다. 도입한다면 최종 사내 반입 전에 버전을 고정해 `app/static/vendor/`에 저장해야 합니다.
 
 ## 현재 개발 서버 접속
 
@@ -33,6 +36,8 @@ GitHub repository 이름은 `pick-a-meet`을 사용합니다.
 | Admin + Host | `leader01` | `2` | 이리더 | 플랫폼파트 / 서비스개발모듈 |
 | Host 전용 | `leader02`~`leader05` | `3`~`6` | 정리더 외 3명 | 4개 파트/모듈 |
 | 일반 사용자 | `member01`~`member11` | `7`~`17` | 박일반 외 10명 | 여러 파트/모듈 |
+
+`member06 / 12`는 비활성 로그인 안내 확인용 계정이며, 나머지 일반 사용자는 활성 상태입니다.
 
 개발용 관리자 콘솔 비밀번호는 `1234`입니다. 이 값은 로컬 `.env`에만 있으며 사내 환경에서는 반드시 Secret으로 교체합니다.
 
@@ -61,6 +66,8 @@ Seed에는 서로 다른 시간·장소·정원을 가진 OPEN 모임 5개와 �
 - Admin도 신청할 때는 일반 사용자와 같은 정원·Host·1인 1모임 규칙을 적용받습니다.
 - 일반 사용자는 신청자의 이름·ID·파트·모듈을 볼 수 있지만 Host 정보와 신청자 사번은 볼 수 없습니다.
 - Host는 본인이 맡은 모임의 장소·동네·메뉴·한마디·시작 일시·정원을 수정할 수 있습니다. 상태와 Host 배정은 Admin만 변경합니다.
+- 시작 시간 입력은 24시간제와 10분 단위이며, 카드 표시는 `오전/오후 h:mm` 형식입니다.
+- 비활성 사용자는 로그인할 수 없고 로그인 이력에 `INACTIVE`로 기록됩니다.
 - 신청 시 PostgreSQL row lock과 DB constraint를 함께 사용해 마지막 한 자리 경합과 동일 사용자의 동시 신청을 막습니다.
 
 ## 디렉터리
@@ -71,14 +78,15 @@ app/                    FastAPI 애플리케이션
   database.py           SQLAlchemy async engine/session
   main.py               앱 조립, 기본 화면, health endpoint
   models/               SQLAlchemy 모델
-  routers/              HTTP route
+  policies/             Admin/Host/모임 소유권 접근 정책
+  routers/              일반/Admin/Host HTTP route
   schemas/              요청/응답 schema
-  services/             업무 규칙과 transaction
+  services/             모임 검증·조회 표현·신청 transaction
   templates/            Jinja2 화면
   static/               CSS, JS, 내부 반입용 vendor 파일
 tests/                  unit/integration/concurrency 테스트
 data/uploads/           로컬 이미지 저장소(파일은 Git 제외)
-migrations/             Alembic migration (Phase 2에서 추가)
+migrations/             Alembic migration
 k8s/                    Kubernetes manifest (배포 단계에서 추가)
 ```
 
@@ -175,9 +183,9 @@ DB 모델이 추가된 이후 integration/concurrency 테스트는 전용 Postgr
 2. SQLAlchemy 모델과 최초 Alembic migration
 3. ID/사번 로그인, IP 변경 확인, Session, CSRF
 4. Admin 사용자/모임 관리
-5. Rich Text Editor와 안전한 이미지 업로드
-6. 일반 모임 목록, eligibility, 신청/취소 transaction
-7. HTMX 5초 polling과 Host 조회 화면
+5. 일반 모임 신청 화면, eligibility, 신청/취소 transaction
+6. Host/Admin 관리 화면과 공통 모임 편집기
+7. HTMX 5초 polling
 8. PostgreSQL 동시성, 권한, 브라우저, load/security 테스트
 9. Docker image와 Kubernetes manifest
 
@@ -208,7 +216,6 @@ DB 변경은 반드시 Alembic revision으로 남깁니다. 운영 DB에서 ORM�
 
 - 전체 자동화 테스트 통과
 - 로그인, IP 변경 확인, Admin 사용자/모임 생성
-- 이미지 업로드와 재조회
 - 일반 사용자의 신청, 중복 차단, 취소, 재신청
 - 마지막 한 자리에 동시 신청 시 정확히 한 명만 성공
 - 한 사용자의 두 모임 동시 신청 시 한 건만 성공
@@ -222,7 +229,7 @@ DB 변경은 반드시 Alembic revision으로 남깁니다. 운영 DB에서 ORM�
 
 - Git 추적 소스와 Alembic migration
 - `pyproject.toml` 및 승인된 dependency 목록/lock 또는 wheelhouse
-- Bootstrap, HTMX, TOAST UI Editor의 고정된 내부 정적 파일과 license
+- 도입하는 외부 frontend library의 고정된 내부 정적 파일과 license
 - Dockerfile과 사내 base image로 바꿀 항목
 - Kubernetes manifest 또는 사내 표준 template
 - image digest, SBOM, 보안 스캔 결과가 요구되면 해당 산출물
@@ -232,7 +239,7 @@ DB 변경은 반드시 Alembic revision으로 남깁니다. 운영 DB에서 ORM�
 
 - `.env`, 실제 Secret, DB dump의 개인정보
 - `.venv`, `__pycache__`, 로컬 PostgreSQL volume
-- `data/uploads`의 개발용 이미지
+- `data/uploads`의 개발용 파일
 - 사번이나 사용자 정보가 포함된 test/log 파일
 
 망분리 환경이 인터넷 package registry에 접근할 수 없다면, 승인된 외부 환경에서 Linux/Python 버전을 사내 build 환경과 맞춰 wheelhouse를 준비하거나 사내 package mirror를 사용합니다. 개발자의 `.venv` 디렉터리를 복사하는 방식은 사용하지 않습니다.
@@ -251,7 +258,7 @@ alembic upgrade head
 
 ### 5. 이미지 저장소를 결정
 
-`IMAGE_STORAGE_PATH`는 pod local filesystem이 아니라 다음 중 하나를 가리켜야 합니다.
+파일 업로드 기능을 추가한다면 `IMAGE_STORAGE_PATH`는 pod local filesystem이 아니라 다음 중 하나를 가리켜야 합니다.
 
 - 여러 pod가 공유하는 사내 file/object storage
 - 재시작 후에도 유지되는 PVC
@@ -313,7 +320,6 @@ GET /health/ready  → 200
 - 최초 로그인, 동일 IP 로그인, 다른 IP 확인 흐름
 - 일반 사용자 `/admin` 접근 시 403
 - Admin 사용자/모임 관리
-- 이미지 업로드 후 pod 재시작에도 이미지 유지
 - 신청/취소/재신청과 정원 차단
 - 두 브라우저에서 마지막 한 자리 동시 신청
 - 5초 polling과 신청 직후 즉시 반영
@@ -334,7 +340,7 @@ GET /health/ready  → 200
 - `/health/live` 실패: process start command, port, image log 확인
 - `live` 성공/`ready` 실패: DB DNS, port, credential, TLS, migration 상태 확인
 - 로그인 후 Session 유지 실패: pod별 `SESSION_SECRET_KEY` 일치 여부, HTTPS와 Secure cookie 확인
-- 이미지가 사라짐: `IMAGE_STORAGE_PATH` mount와 PVC/shared storage 확인
+- 업로드 파일이 사라짐: 업로드 기능을 도입한 경우 `IMAGE_STORAGE_PATH` mount와 PVC/shared storage 확인
 - 실제 client IP가 모두 동일: Ingress forwarded header와 trusted proxy 설정 확인
 - 신청 정합성 오류: PostgreSQL을 사용 중인지, 최신 migration/constraint가 적용됐는지 확인
 
@@ -352,6 +358,6 @@ PostgreSQL volume 삭제는 모든 로컬 DB 데이터를 지우므로 일반적
 
 - ID/사번은 query string으로 보내지 않고 사번 전체를 log에 남기지 않습니다.
 - UI에서 버튼을 숨기는 것과 별개로 모든 Admin/Host 권한을 backend에서 검사합니다.
-- Rich Text HTML은 allowlist로 정제하고 업로드 파일은 확장자만이 아니라 실제 image 형식과 크기를 검사합니다.
+- 추후 Rich Text나 파일 업로드를 도입하면 HTML allowlist와 실제 파일 형식·크기 검사를 함께 적용합니다.
 - 신청 가능 여부는 화면 표시와 무관하게 transaction 안에서 최신 값으로 다시 검증합니다.
 - 운영 Secret과 개인정보가 포함된 파일을 issue, chat, Git commit에 첨부하지 않습니다.

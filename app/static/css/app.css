@@ -64,8 +64,8 @@ button:disabled { background: #adb5bd; border-color: #adb5bd; cursor: not-allowe
 .meeting-card h3 { font-size: 1.15rem; margin: 0 0 .35rem; }
 .meeting-card p { margin: .35rem 0; }
 .meeting-card blockquote { border-left: 3px solid #0d6efd; color: #495057; font-size: .9rem; margin: .3rem 0 .65rem; padding-left: .65rem; }
-.meeting-card form, .meeting-card > button { margin-top: auto; }
-.host-card-actions { display: flex; gap: .5rem; margin-top: auto; }
+.meeting-card form, .meeting-card > button { margin-top: 0; }
+.host-card-actions { display: flex; gap: .5rem; margin-top: 0; }
 .host-card-actions .button { flex: 1; padding-inline: .5rem; text-align: center; }
 .meeting-title-row { align-items: flex-start; display: flex; gap: .4rem; justify-content: space-between; }
 .map-icon { color: #0d6efd; flex: 0 0 auto; height: 1.35rem; width: 1.35rem; }
@@ -76,7 +76,15 @@ button:disabled { background: #adb5bd; border-color: #adb5bd; cursor: not-allowe
 .meeting-facts dd { margin: 0; }
 .host-message > span { color: #6c757d; font-size: .75rem; font-weight: 700; }
 .list-toolbar { align-items: center; display: flex; justify-content: space-between; }
-.admin-toolbar { margin-bottom: 1rem; }
+.management-toolbar { margin-bottom: 1rem; }
+.management-toolbar h2 { margin: 0; }
+.toolbar-subtitle { color: #6c757d; font-size: .85rem; margin: .3rem 0 0; }
+.compact-button { padding: .4rem .7rem; }
+.clipboard-source { height: 1px; left: -10000px; opacity: 0; position: fixed; width: 1px; }
+.toast { border-radius: .5rem; box-shadow: 0 .75rem 2rem rgba(0,0,0,.2); color: #fff; max-width: min(360px, calc(100vw - 2rem)); opacity: 0; padding: .8rem 1rem; pointer-events: none; position: fixed; right: 1rem; top: 1rem; transform: translateY(-.5rem); transition: opacity .18s ease, transform .18s ease; visibility: hidden; z-index: 100; }
+.toast.show { opacity: 1; transform: translateY(0); visibility: visible; }
+.toast.success { background: #146c43; }
+.toast.danger { background: #b02a37; }
 .view-toggle { background: #e9ecef; border-radius: .4rem; display: flex; padding: .2rem; }
 .view-toggle a { border-radius: .3rem; color: #495057; padding: .45rem .75rem; text-decoration: none; }
 .view-toggle a.active { background: #fff; color: #0d6efd; font-weight: 700; }
@@ -89,7 +97,7 @@ button:disabled { background: #adb5bd; border-color: #adb5bd; cursor: not-allowe
 .chip { background: #fff; border: 1px solid #ced4da; border-radius: 999px; color: #495057; padding: .4rem .75rem; text-decoration: none; }
 .chip:hover, .chip.active { background: #0d6efd; border-color: #0d6efd; color: #fff; }
 .clear-filter { align-self: center; color: #6c757d; font-size: .8rem; margin-left: .15rem; }
-.capacity { border-top: 1px solid #e9ecef; display: flex; justify-content: space-between; margin: 1.25rem 0; padding-top: 1rem; }
+.capacity { border-top: 1px solid #e9ecef; display: flex; justify-content: space-between; margin: auto 0 1.25rem; padding-top: 1rem; }
 .table-wrap { overflow-x: auto; padding: 0; }
 table { border-collapse: collapse; width: 100%; }
 th, td { border-bottom: 1px solid #dee2e6; padding: .75rem; text-align: left; white-space: nowrap; }
@@ -100,6 +108,19 @@ th { background: #f8f9fa; }
 @media (max-width: 760px) { .site-header nav { align-items: flex-start; flex-direction: column; padding-block: .8rem; } .gnb-left, .gnb-user { align-items: flex-start; flex-wrap: wrap; gap: .6rem 1rem; } .gnb-identity { flex-wrap: wrap; } .gnb-menu { align-items: center; display: flex; gap: .5rem; } .gnb-menu::after { display: none; } .gnb-dropdown { border: 0; box-shadow: none; display: flex; flex-direction: row; gap: .25rem; padding: 0; position: static; } .gnb-dropdown a { background: #f1f3f5; padding: .25rem .45rem; } .page-heading { display: grid; gap: 1rem; } .user-box { text-align: left; } .actions { justify-content: flex-start; } }
 .form-card { max-width: 760px; }
 .form-grid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+.meeting-editor-layout { align-items: start; display: grid; gap: 1rem; grid-template-columns: minmax(0, 1fr) 280px; }
+.meeting-editor-form { padding: 1.25rem; }
+.meeting-editor-form .form-stack { margin-top: 0; }
+.meeting-form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.meeting-form-grid .field-wide { grid-column: 1 / -1; }
+.meeting-form-grid input, .meeting-form-grid select, .meeting-form-grid textarea { min-width: 0; }
+.datetime-picker { display: grid; gap: .4rem; grid-template-columns: minmax(0, 1fr) 5.25rem 5.25rem; }
+.form-submit-area { display: grid; gap: .35rem; }
+.form-submit-area button { width: 100%; }
+.form-validation-error { color: #dc3545; min-height: 1.2em; }
+.meeting-preview { position: sticky; top: 1rem; }
+.preview-label { color: #6c757d; font-size: .8rem; font-weight: 700; margin: 0 0 .5rem; }
+.preview-meeting-card { min-height: 320px; }
 .checkbox-row { display: flex; flex-wrap: wrap; gap: 1rem; }
 .checkbox-row label { align-items: center; display: flex; flex-direction: row; font-weight: 500; }
 .checkbox-row input { width: auto; }
@@ -127,3 +148,4 @@ th { background: #f8f9fa; }
 .font-ibm { font-family: "IBM Plex Sans KR", sans-serif; }
 .font-gowun { font-family: "Gowun Dodum", sans-serif; }
 .font-nanum { font-family: "Nanum Gothic", sans-serif; }
+@media (max-width: 760px) { .meeting-editor-layout { grid-template-columns: 1fr; } .meeting-preview { position: static; } .meeting-form-grid { grid-template-columns: 1fr; } .meeting-form-grid .field-wide { grid-column: auto; } .datetime-picker { grid-template-columns: 1fr 4.75rem 4.75rem; } }

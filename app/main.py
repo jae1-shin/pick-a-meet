@@ -10,7 +10,7 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from app.config import get_settings
 from app.database import engine
-from app.routers import auth, pages
+from app.routers import admin, auth, host, pages
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -37,6 +37,8 @@ app.add_middleware(
 app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 app.include_router(auth.router)
 app.include_router(pages.router)
+app.include_router(admin.router)
+app.include_router(host.router)
 
 
 @app.get("/")

@@ -1,8 +1,7 @@
 {% extends "base.html" %}
 {% block content %}
-  {% if flash %}<div class="alert {{ 'success' if flash[0] == 'success' else '' }}" role="status">{{ flash[1] }}</div>{% endif %}
   <section>
-    <div class="list-toolbar"><h2>모임 목록</h2><div class="view-toggle"><a class="{{ 'active' if group_by == 'all' else '' }}" href="{{ view_hrefs.all }}">전체</a><a class="{{ 'active' if group_by == 'neighborhood' else '' }}" href="{{ view_hrefs.neighborhood }}">동네별</a><a class="{{ 'active' if group_by == 'date' else '' }}" href="{{ view_hrefs.date }}">일시별</a></div></div>
+    <div class="list-toolbar"><h2>모임 신청</h2><div class="view-toggle"><a class="{{ 'active' if group_by == 'all' else '' }}" href="{{ view_hrefs.all }}">전체</a><a class="{{ 'active' if group_by == 'neighborhood' else '' }}" href="{{ view_hrefs.neighborhood }}">동네별</a><a class="{{ 'active' if group_by == 'date' else '' }}" href="{{ view_hrefs.date }}">일시별</a></div></div>
     <div class="meeting-filters">
       <div class="filter-row"><span class="filter-label">동네</span><nav class="filter-chips" aria-label="동네 필터">{% for option in neighborhood_options %}<a class="chip {{ 'active' if option.selected else '' }}" href="{{ option.href }}" aria-pressed="{{ 'true' if option.selected else 'false' }}">{{ option.label }}</a>{% endfor %}{% if selected_neighborhoods %}<a class="clear-filter" href="{{ neighborhood_clear_href }}">필터 해제</a>{% endif %}</nav></div>
       <div class="filter-row"><span class="filter-label">일시</span><nav class="filter-chips" aria-label="일시 필터">{% for option in date_options %}<a class="chip {{ 'active' if option.selected else '' }}" href="{{ option.href }}" aria-pressed="{{ 'true' if option.selected else 'false' }}">{{ option.label }}</a>{% endfor %}{% if selected_dates %}<a class="clear-filter" href="{{ date_clear_href }}">필터 해제</a>{% endif %}</nav></div>

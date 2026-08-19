@@ -16,8 +16,19 @@ router = APIRouter()
 templates = Jinja2Templates(directory=Path(__file__).resolve().parents[1] / "templates")
 
 
-def login_context(request: Request, error: str | None = None) -> dict[str, object]:
-    return {"request": request, "csrf_token": csrf_token(request), "error": error}
+def login_context(
+    request: Request,
+    error: str | None = None,
+    login_id: str = "",
+    employee_no: str = "",
+) -> dict[str, object]:
+    return {
+        "request": request,
+        "csrf_token": csrf_token(request),
+        "error": error,
+        "login_id": login_id,
+        "employee_no": employee_no,
+    }
 
 
 @router.get("/login", response_class=HTMLResponse)
@@ -41,7 +52,6 @@ async def login(
         select(Member).where(
             Member.login_id == login_id.strip(),
             Member.employee_no == employee_no.strip(),
-            Member.active.is_(True),
         )
     )
     if member is None:
@@ -50,8 +60,34 @@ async def login(
         return templates.TemplateResponse(
             request=request,
             name="login.html",
-            context=login_context(request, "ID 또는 사번을 확인해주세요."),
+            context=login_context(
+                request,
+                "ID 또는 사번을 확인해주세요.",
+                login_id,
+                employee_no,
+            ),
             status_code=401,
+        )
+    if not member.active:
+        db.add(
+            LoginHistory(
+                member_id=member.member_id,
+                login_ip=ip,
+                ip_changed=False,
+                login_result="INACTIVE",
+            )
+        )
+        await db.commit()
+        return templates.TemplateResponse(
+            request=request,
+            name="login.html",
+            context=login_context(
+                request,
+                "사용이 중지된 계정입니다. 관리자에게 문의해주세요.",
+                login_id,
+                employee_no,
+            ),
+            status_code=403,
         )
 
     if member.last_login_ip and member.last_login_ip != ip:

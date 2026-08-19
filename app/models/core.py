@@ -72,7 +72,7 @@ class LoginHistory(Base):
     __tablename__ = "login_history"
     __table_args__ = (
         CheckConstraint(
-            "login_result IN ('SUCCESS', 'SUCCESS_AFTER_IP_CONFIRM', 'FAILED')",
+            "login_result IN ('SUCCESS', 'SUCCESS_AFTER_IP_CONFIRM', 'FAILED', 'INACTIVE')",
             name="login_result",
         ),
     )

@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}사용자 {{ '수정' if target else '등록' }} · Pick a Meet{% endblock %}
 {% block content %}
-  <div class="page-heading"><div><p class="eyebrow">ADMIN</p><h1>사용자 {{ '수정' if target else '등록' }}</h1></div><a href="/admin">목록으로</a></div>
+  <div class="list-toolbar management-toolbar"><h2>사용자 {{ '수정' if target else '등록' }}</h2><a href="/admin">사용자 관리로</a></div>
   <section class="card form-card">
     {% if error %}<div class="alert" role="alert">{{ error }}</div>{% endif %}
     <form method="post" class="form-stack">

@@ -1,9 +1,17 @@
 {% extends "base.html" %}
 {% block title %}신청자 명단 · Pick a Meet{% endblock %}
 {% block content %}
-  <div class="page-heading"><div><p class="eyebrow">HOST · 신청자 명단</p><h1>{{ meeting.place_name }}</h1><p>{{ meeting.start_at.astimezone(seoul).strftime('%Y.%m.%d') }} ({{ weekdays[meeting.start_at.astimezone(seoul).weekday()] }}) {{ meeting.start_at.astimezone(seoul).strftime('%H:%M') }} · {{ meeting.neighborhood }}</p></div><a href="/host">내 모임으로</a></div>
+  {% set local_start = meeting.start_at.astimezone(seoul) %}<div class="list-toolbar management-toolbar"><div><h2>모임 신청자 상세</h2><p class="toolbar-subtitle">{{ meeting.place_name }} · {{ local_start.strftime('%Y.%m.%d') }} ({{ weekdays[local_start.weekday()] }}) {{ local_start|korean_time }} · {{ meeting.neighborhood }}</p></div><div class="actions"><button class="secondary compact-button" id="copy-applicants" type="button">클립보드 복사</button><a href="/host">내가 맡은 모임으로</a></div></div>
+  <textarea id="applicant-copy-source" class="clipboard-source" aria-hidden="true" tabindex="-1">모임: {{ meeting.place_name }}
+일시: {{ local_start.strftime('%Y.%m.%d') }} ({{ weekdays[local_start.weekday()] }}) {{ local_start|korean_time }}
+신청: {{ applicants|length }} / {{ meeting.capacity }}명
+
+이름	ID	파트	모듈
+{% for applicant in applicants %}{{ applicant.name }}	{{ applicant.login_id }}	{{ applicant.module.part.name }}	{{ applicant.module.name }}{% if not loop.last %}
+{% endif %}{% endfor %}</textarea>
   <div class="summary-card card"><strong>현재 신청 {{ applicants|length }}명</strong><span> / 정원 {{ meeting.capacity }}명</span></div>
   <div class="table-wrap card"><table><thead><tr><th>이름</th><th>ID</th><th>파트</th><th>모듈</th></tr></thead><tbody>
     {% for applicant in applicants %}<tr><td>{{ applicant.name }}</td><td>{{ applicant.login_id }}</td><td>{{ applicant.module.part.name }}</td><td>{{ applicant.module.name }}</td></tr>{% else %}<tr><td colspan="4" class="muted">아직 신청자가 없습니다.</td></tr>{% endfor %}
   </tbody></table></div>
+  <script src="{{ url_for('static', path='/js/copy_applicants.js') }}" defer></script>
 {% endblock %}
