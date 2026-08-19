@@ -1,134 +1,88 @@
 # Pick a Meet
 
-사내 구성원 약 200명이 장소·시간·동네·대표 메뉴·호스트의 한마디를 확인하고 모임 하나에 선착순으로 신청하는 서비스입니다. FastAPI, Jinja2, 순수 CSS/JavaScript, PostgreSQL을 하나의 애플리케이션으로 구성하고, 로컬 WSL에서 검증한 동일 소스를 사내 Kubernetes 환경으로 옮기는 것을 목표로 합니다.
+사내 구성원이 모임의 일시·장소·동네·대표 메뉴·호스트의 한마디를 확인하고 선착순으로 신청하는 서비스입니다. FastAPI, Jinja2, 순수 CSS/JavaScript와 PostgreSQL로 구성되어 있습니다.
 
-GitHub repository 이름은 `pick-a-meet`을 사용합니다.
+- 사내 PostgreSQL·VMware Kubernetes 배포: [INTERNAL_DEPLOYMENT.md](INTERNAL_DEPLOYMENT.md)
+- 기능 검증 항목: [TEST_CHECKLIST.md](TEST_CHECKLIST.md)
+- 구현 계획: [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md)
+- 원본 요구사항: [meeting_service_plan.md](meeting_service_plan.md)
 
-상세 설계와 단계별 구현 범위는 [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md), 원본 요구사항은 [meeting_service_plan.md](meeting_service_plan.md)를 참고하세요.
+## 주요 기능
 
-기존 사내 PostgreSQL과 Kubernetes에 설치하는 절차는 [INTERNAL_DEPLOYMENT.md](INTERNAL_DEPLOYMENT.md)에 별도로 정리했습니다.
+### 일반 사용자
 
-## 현재 구현 상태
+- 전체·동네별·일시별 모임 보기
+- 동네와 날짜 복수 필터
+- 모임 신청·취소와 결과 toast
+- 신청·잔여 인원 및 신청자 이름·ID·파트·모듈 확인
+- 현재 필터와 스크롤을 유지한 5초 카드 현황 자동 갱신
+- 신청 시작 전 모임 미리보기, 잔여 시간과 자동 입장
 
-- 완료: 프로젝트 골격, 환경변수 설정, 비동기 PostgreSQL 연결, 서명 Cookie Session, Jinja2 화면
-- 완료: DB 모델과 Alembic migration, 로그인/IP 변경 확인, Admin/Host 권한, 개발용 seed
-- 완료: 모임 전체·동네별·일시별 보기, 동네/날짜 복수 필터, 신청자 tooltip, 신청·취소
-- 완료: Host 본인 모임 조회·공통 편집 폼·실시간 카드 미리보기·신청자 명단 클립보드 복사
-- 완료: Admin 사용자·모임 CRUD, 테이블 헤더 정렬, Host/Admin 겸임 권한과 GNB dropdown
-- 완료: 신청·취소·저장·클립보드 결과를 공통 toast로 표시하고 폼 오류는 입력 화면 아래에 표시
-- 완료: 비활성 계정 로그인 차단 및 별도 안내, 실패 시 입력한 ID/사번 유지
-- 완료: Admin 신청 시작 시각 설정, 일반 사용자 대기 화면·잔여 시간·10초 서버 보정·자동 진입
-- 완료: 신청 시작 전에도 Admin/Host 화면 접근, 실제 신청·취소 요청은 인메모리 시각으로 차단
-- 완료: 사용자 권한 조합과 신청/Host 배정 상태를 확인하는 서버 검증 및 Host/신청 DB 제약
-- 완료: 현재 필터·보기 방식을 유지하는 5초 카드 현황 자동 갱신
-- 완료: Gowun Dodum 글꼴과 SIL OFL 라이선스를 `app/static/fonts/`에 내장
-- 완료: `/health/live`, `/health/ready`, PostgreSQL Docker Compose, Python 테스트 환경
-- 완료: 운영 image용 Dockerfile, DB migration·최초 Admin Job, replica 1 Kubernetes 기본 manifest
-- 진행 예정: 동시성 부하 테스트와 사내 registry·Gateway·PostgreSQL 실제 값 적용
+### Host
 
-## 현재 개발 서버 접속
+- 본인이 맡은 모임 목록과 신청자 명단 확인
+- 신청자 명단 클립보드 복사
+- 장소·동네·대표 메뉴·한마디·일시·정원 편집
+- Admin과 동일한 공통 편집 폼과 실시간 카드 미리보기
 
-개발 서버가 실행 중이면 Windows와 WSL의 브라우저에서 다음 주소로 접속합니다.
+### Admin
 
-- 권장: <http://localhost:8000>
-- WSL 직접 주소가 필요한 경우 `hostname -I`로 확인한 IP의 8000번 port
-- 임시 글꼴 비교: <http://localhost:8000/style/font-preview>
-- 대기 화면 미리보기: Admin 로그인 → 신청 설정 → `대기 화면 미리보기`
+- 사용자 등록·수정과 권한 관리
+- 모임 생성·수정, Host 배정과 상태 관리
+- 신청 시작 시각 설정과 대기 화면 미리보기
+- 사용자·모임 관리 테이블 정렬
+- 추가 Admin console 비밀번호 확인
 
-현재 개발용 계정은 다음과 같습니다. 실제 사내 반입 전에 삭제하거나 정식 사용자 데이터로 교체해야 합니다.
+Host와 Admin 권한은 독립적이므로 한 사용자가 두 권한을 함께 가질 수 있습니다.
 
-| 역할 | ID | 사번 | 이름 | 파트 / 모듈 |
-|---|---|---|---|---|
-| Admin 전용 | `admin01` | `1` | 김관리 | 경영지원파트 / 서비스운영모듈 |
-| Admin + Host | `leader01` | `2` | 이리더 | 플랫폼파트 / 서비스개발모듈 |
-| Host 전용 | `leader02`~`leader05` | `3`~`6` | 정리더 외 3명 | 4개 파트/모듈 |
-| 일반 사용자 | `member01`~`member11` | `7`~`17` | 박일반 외 10명 | 여러 파트/모듈 |
+## 모임 신청 제약
 
-`member06 / 12`는 비활성 로그인 안내 확인용 계정이며, 나머지 일반 사용자는 활성 상태입니다.
+- 전역 신청 시작 시각 전에는 누구도 신청하거나 취소할 수 없습니다. 일반 사용자는 대기 화면으로 이동하고, Admin과 Host는 모임을 미리 볼 수만 있습니다.
+- 활성 상태이며 `모임 신청 가능` 권한이 있는 사용자만 신청할 수 있습니다.
+- Host 사용자는 신청 권한을 동시에 가질 수 없으며, 실제 OPEN 모임의 Host에게는 신청 버튼도 표시하지 않습니다.
+- Admin 권한만으로 신청이 제한되지는 않으며, 신청할 때는 일반 사용자와 같은 규칙을 적용받습니다.
+- 사용자는 동시에 모임 하나만 신청할 수 있습니다. 취소한 뒤에는 다른 모임을 신청할 수 있습니다.
+- `OPEN` 모임에만 신청·취소할 수 있고 정원을 초과할 수 없습니다.
+- `CLOSED`는 `신청 기간이 아닙니다.`, `CANCELLED`는 `취소되었습니다.`로 표시하고 `DRAFT`는 일반 화면에서 숨깁니다.
+- 신청자가 있는 모임은 `CANCELLED`로 바꿀 수 없습니다.
+- 화면에서 신청 가능으로 보였더라도 마지막 자리를 다른 사용자가 먼저 가져가면 서버가 다시 검사하여 거절하고, 최신 화면과 `방금 모집이 마감되었습니다.` toast를 보여줍니다.
+- PostgreSQL row lock과 unique/check constraint로 동시 신청, 정원 초과와 한 사용자의 중복 신청을 서버에서 방지합니다.
 
-개발용 관리자 콘솔 비밀번호는 `1234`입니다. 이 값은 로컬 `.env`에만 있으며 사내 환경에서는 반드시 Secret으로 교체합니다.
+### 사용자 상태 변경 제약
 
-`leader01`은 Host와 Admin을 함께 가진 겸임 권한 테스트 계정입니다. 두 권한은 독립적으로 설정할 수 있습니다.
+- `모임 신청 가능`을 N으로 바꾸려면 현재 신청한 모임이 없어야 합니다.
+- Host를 Y로 바꾸면 모임 신청 권한은 N이어야 합니다.
+- 사용자를 비활성화하려면 신청한 모임과 Host로 배정된 모임이 모두 없어야 합니다.
+- 화면 제어와 별개로 모든 규칙을 서버에서 다시 검증합니다.
 
-서버를 다시 실행할 때는 다음 명령을 사용합니다.
-
-```bash
-. .venv/bin/activate
-uvicorn app.main:app --host 0.0.0.0 --port 8000
-```
-
-더미 데이터는 migration 적용 후 언제든 멱등하게 다시 준비할 수 있습니다.
-
-```bash
-alembic upgrade head
-python -m scripts.seed_demo
-```
-
-Seed에는 서로 다른 시간·장소·정원을 가진 OPEN 모임 5개와 샘플 신청 6건이 포함됩니다. 기존 신청 데이터는 seed 재실행 시 삭제하지 않습니다.
-
-## 핵심 업무 규칙
-
-- 사용자는 동시에 한 모임만 신청할 수 있으며 취소 후 다시 신청할 수 있습니다.
-- Host 권한과 신청 권한은 동시에 Y일 수 없습니다. 이 조합은 화면, 서버 서비스, DB check constraint에서 모두 차단합니다.
-- Admin도 신청할 때는 일반 사용자와 같은 정원·Host·1인 1모임 규칙을 적용받습니다.
-- 일반 사용자는 신청자의 이름·ID·파트·모듈을 볼 수 있지만 Host 정보와 신청자 사번은 볼 수 없습니다.
-- Host는 본인이 맡은 모임의 장소·동네·메뉴·한마디·시작 일시·정원을 수정할 수 있습니다. 상태와 Host 배정은 Admin만 변경합니다.
-- 시작 시간 입력은 24시간제와 10분 단위이며, 카드 표시는 `오전/오후 h:mm` 형식입니다.
-- 비활성 사용자는 로그인할 수 없고 로그인 이력에 `INACTIVE`로 기록됩니다.
-- 신청 권한을 N으로 바꾸려면 현재 신청이 없어야 하고, 사용자를 비활성화하려면 신청과 Host 배정이 모두 없어야 합니다.
-- `DRAFT`는 일반 화면에서 숨깁니다. `CLOSED`는 `신청 기간이 아닙니다.`, `CANCELLED`는 `취소되었습니다.`로 표시하며, 신청자가 0명일 때만 `CANCELLED`로 바꿀 수 있습니다.
-- 전역 신청 시작 전 일반 사용자는 카드와 필터가 있는 대기 화면을 봅니다. Admin/Host는 미리 일반 화면에 들어갈 수 있지만 신청·취소 POST는 시작 전 차단됩니다.
-- 신청 시 PostgreSQL row lock과 DB constraint를 함께 사용해 마지막 한 자리 경합과 동일 사용자의 동시 신청을 막습니다.
-
-### 신청 시작 시각 캐시 동작
-
-Admin이 신청 시작 시각을 저장하면 DB에 영속화한 뒤 현재 서버 프로세스의 메모리 캐시를 즉시 갱신합니다. 앱 시작 시에는 DB에서 한 번만 읽으며, 이후 화면 진입·신청·취소·10초 상태 확인은 DB 설정 조회 없이 캐시만 사용합니다. 신청 서비스는 DB transaction을 열기 전에 캐시를 먼저 확인합니다.
-
-현재 방식은 개발 서버처럼 애플리케이션 프로세스가 하나라는 전제입니다. 여러 worker 또는 Kubernetes replica로 확장할 때는 Redis 같은 공유 캐시/pub-sub 또는 설정 변경 broadcast를 도입해야 합니다. 그렇지 않으면 Admin이 설정을 바꾼 pod와 다른 pod의 캐시가 달라질 수 있습니다.
-
-## 디렉터리
-
-```text
-app/                    FastAPI 애플리케이션
-  config.py             환경변수 설정
-  database.py           SQLAlchemy async engine/session
-  main.py               앱 조립, 기본 화면, health endpoint
-  models/               SQLAlchemy 모델
-  policies/             Admin/Host/모임 소유권 접근 정책
-  routers/              일반/Admin/Host HTTP route
-  schemas/              요청/응답 schema
-  services/             모임 검증·조회 표현·신청 transaction
-  templates/            Jinja2 화면
-  static/               CSS, JS, 내부 반입용 vendor 파일
-tests/                  unit/integration/concurrency 테스트
-data/uploads/           로컬 이미지 저장소(파일은 Git 제외)
-migrations/             Alembic migration
-k8s/                    Kubernetes manifest (배포 단계에서 추가)
-```
-
-## 로컬 WSL에서 시작하기
+## 로컬 개발 시작
 
 ### 1. 준비물
 
 - Python 3.12 이상
-- Docker Engine과 Docker Compose plugin
-- PostgreSQL client는 선택 사항입니다.
+- Docker Engine
+- Docker Compose plugin 또는 별도 PostgreSQL 17
 
-### 2. 환경 설정
+```bash
+docker version
+python3 --version
+```
+
+### 2. 환경변수
 
 ```bash
 cp .env.example .env
 ```
 
-`.env`에서 최소 `DATABASE_PASSWORD`와 `SESSION_SECRET_KEY`를 변경하세요. Secret key는 32자 이상의 예측하기 어려운 값이어야 합니다.
+`.env`에서 최소 `DATABASE_PASSWORD`, `SESSION_SECRET_KEY`, `ADMIN_CONSOLE_PASSWORD`를 로컬 값으로 변경합니다. Session key는 32자 이상의 무작위 문자열을 사용합니다.
 
 ```bash
 python3 -c 'import secrets; print(secrets.token_urlsafe(48))'
 ```
 
-`.env`는 Git에 포함되지 않습니다. 실제 사내 DB 비밀번호나 Session Secret을 `.env.example`, 문서, 소스에 기록하지 마세요.
+`.env`는 Git에 포함되지 않습니다.
 
-### 3. Python 환경 설치
+### 3. Python 환경
 
 ```bash
 python3 -m venv .venv
@@ -136,247 +90,143 @@ python3 -m venv .venv
 python -m pip install -e '.[dev]'
 ```
 
-### 4. PostgreSQL 실행
+### 4. PostgreSQL
+
+Docker Compose를 사용할 경우 PostgreSQL만 실행합니다.
 
 ```bash
 docker compose up -d postgres
 docker compose ps
 ```
 
-DB 로그가 필요하면 다음 명령을 사용합니다.
+이미 로컬 PostgreSQL이 `127.0.0.1:5432`에서 실행 중이면 `.env`의 접속 정보만 맞추고 이 단계는 생략합니다.
+
+### 5. Migration과 개발 데이터
 
 ```bash
-docker compose logs postgres
+. .venv/bin/activate
+alembic upgrade head
+python -m scripts.seed_demo
 ```
 
-### 5. 애플리케이션 실행
+`seed_demo`는 사용자·모임을 멱등하게 준비하며 기존 신청을 임의로 삭제하지 않습니다. 운영 DB에서는 실행하지 않습니다.
+
+### 6. 개발 서버
 
 ```bash
 . .venv/bin/activate
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-- 초기 화면: <http://localhost:8000>
-- API 문서(개발용): <http://localhost:8000/docs>
+- 애플리케이션: <http://localhost:8000>
+- API 문서: <http://localhost:8000/docs>
 - liveness: <http://localhost:8000/health/live>
 - readiness: <http://localhost:8000/health/ready>
+- 글꼴 비교 페이지: <http://localhost:8000/style/font-preview>
 
-`live`는 프로세스 생존 여부만, `ready`는 PostgreSQL 연결까지 확인합니다. PostgreSQL이 꺼져 있으면 `ready`가 HTTP 503을 반환하는 것이 정상입니다.
+`live`는 프로세스 생존 여부를, `ready`는 PostgreSQL 연결까지 확인합니다.
 
-### 6. 테스트
+## 개발용 계정
+
+| 역할 | ID | 사번 | 비고 |
+|---|---|---|---|
+| Admin 전용 | `admin01` | `1` | 사용자·모임 관리 |
+| Admin + Host | `leader01` | `2` | 겸임 권한 확인 |
+| Host 전용 | `leader02`~`leader05` | `3`~`6` | 서로 다른 모임 담당 |
+| 일반 사용자 | `member01`~`member11` | `7`~`17` | 여러 파트·모듈 |
+
+- `member06 / 12`는 비활성 로그인 안내 확인용입니다.
+- 로컬 Admin console 비밀번호는 현재 `1234`입니다.
+- 운영 환경에서는 개발 계정 대신 최초 Admin bootstrap과 정식 사용자 데이터를 사용합니다.
+
+## 테스트
 
 ```bash
 . .venv/bin/activate
 pytest -q
 ```
 
-DB 모델이 추가된 이후 integration/concurrency 테스트는 전용 PostgreSQL DB를 사용하게 됩니다. 운영 DB를 테스트 대상으로 지정하지 마세요.
+매 변경에서는 관련된 중요 항목만 확인하고, 단계 종료나 배포 전에는 [TEST_CHECKLIST.md](TEST_CHECKLIST.md)를 기준으로 전체 검증합니다. 운영 DB를 자동화 테스트 대상으로 사용하지 않습니다.
 
-## 환경변수
+## Docker 이미지 로컬 확인
 
-| 변수 | 용도 | 로컬 기본값/주의사항 |
-|---|---|---|
-| `APP_ENV` | 실행 환경 이름 | `local` |
-| `APP_HOST`, `APP_PORT` | bind 주소와 port | `0.0.0.0`, `8000` |
-| `DATABASE_HOST`, `DATABASE_PORT` | PostgreSQL 주소 | `localhost`, `5432` |
-| `DATABASE_NAME` | DB 이름 | `meeting_service` |
-| `DATABASE_USER` | DB 계정 | `meeting_app` |
-| `DATABASE_PASSWORD` | DB 비밀번호 | Secret으로 관리 |
-| `SESSION_SECRET_KEY` | Cookie 서명 key | 32자 이상, 환경별 별도 값 |
-| `ADMIN_CONSOLE_PASSWORD` | Admin 진입 추가 비밀번호 | 로컬만 `1234`, 운영 Secret으로 교체 |
-| `SESSION_TIMEOUT_SECONDS` | Session 만료 | 기본 8시간 |
-| `SESSION_COOKIE_SECURE` | HTTPS cookie 강제 | 로컬 `false`, 사내 HTTPS `true` |
-| `POLLING_INTERVAL_SECONDS` | 화면 갱신 주기 | 기본 5초 |
-| `IMAGE_STORAGE_PATH` | 이미지 저장 경로 | 로컬 `./data/uploads` |
-| `IMAGE_MAX_SIZE_BYTES` | 업로드 최대 크기 | 기본 5 MiB |
-| `TRUSTED_PROXY` | 신뢰 proxy header 처리 | Ingress 확인 전 `false` |
-
-## 개발 진행 순서
-
-기능을 한꺼번에 추가하지 않고 아래 순서로 구현·검증합니다.
-
-1. 실행 골격과 health endpoint
-2. SQLAlchemy 모델과 최초 Alembic migration
-3. ID/사번 로그인, IP 변경 확인, Session, CSRF
-4. Admin 사용자/모임 관리
-5. 일반 모임 신청 화면, eligibility, 신청/취소 transaction
-6. Host/Admin 관리 화면과 공통 모임 편집기
-7. 순수 JavaScript 5초 fragment polling
-8. PostgreSQL 동시성, 권한, 브라우저, load/security 테스트
-9. Docker image와 Kubernetes manifest
-
-DB 변경은 반드시 Alembic revision으로 남깁니다. 운영 DB에서 ORM의 `create_all()`로 schema를 임의 생성하거나 변경하지 않습니다.
-
-## 사내로 옮길 때: 어디서부터 시작할까
-
-사내 반입은 아래 순서로 진행하면 됩니다. 먼저 대상 환경 정보를 확정하고, 그다음 소스와 artifact를 옮기세요.
-
-### 1. 사내 환경 정보를 먼저 확인
-
-사내 담당자에게 다음 정보를 받습니다.
-
-- Kubernetes namespace, Ingress class/host/TLS 정책
-- Container registry 주소, 로그인 및 image 반입 절차
-- PostgreSQL host/port/DB/user, TLS 요구사항, migration 실행 권한
-- 공유 파일 스토리지 또는 PVC의 storage class와 access mode
-- ConfigMap/Secret 관리 방식과 승인 절차
-- Ingress가 전달하는 실제 client IP header와 신뢰 가능한 proxy 범위
-- 외부 오픈소스와 Python package, frontend asset 반입 승인 절차
-- 로그 수집 방식, resource quota, 운영 health probe 기준
-
-이 정보가 없으면 특히 DB 연결, 이미지 영속성, client IP 판단을 확정할 수 없습니다.
-
-### 2. 로컬 완료 기준을 통과
-
-반입 전에 WSL에서 다음을 확인합니다.
-
-- 전체 자동화 테스트 통과
-- 로그인, IP 변경 확인, Admin 사용자/모임 생성
-- Admin 신청 시작 시각 설정, 대기 화면 미리보기, 일반 사용자 자동 진입
-- 시작 전 신청 POST가 DB transaction 전에 차단되는지 확인
-- 일반 사용자의 신청, 중복 차단, 취소, 재신청
-- 마지막 한 자리에 동시 신청 시 정확히 한 명만 성공
-- 한 사용자의 두 모임 동시 신청 시 한 건만 성공
-- 일반 사용자에게 Host 정보·신청자 사번이 비노출되고 Admin/Host 권한이 403인지 확인
-- Admin 하위 URL 직접 접근 시 콘솔 미인증 Admin은 unlock으로 이동하고 일반 사용자는 403인지 확인
-- 5초 polling 및 신청/취소 직후 즉시 갱신
-- Docker image로도 동일 smoke test 통과
-
-### 3. 반입 묶음을 만든다
-
-권장 반입 대상은 다음과 같습니다.
-
-- Git 추적 소스와 Alembic migration
-- `pyproject.toml` 및 승인된 dependency 목록/lock 또는 wheelhouse
-- 도입하는 외부 frontend library의 고정된 내부 정적 파일과 license
-- Dockerfile과 사내 base image로 바꿀 항목
-- Kubernetes manifest 또는 사내 표준 template
-- image digest, SBOM, 보안 스캔 결과가 요구되면 해당 산출물
-- 이 README와 배포 변경사항 문서
-
-다음은 반입하면 안 됩니다.
-
-- `.env`, 실제 Secret, DB dump의 개인정보
-- `.venv`, `__pycache__`, 로컬 PostgreSQL volume
-- `data/uploads`의 개발용 파일
-- 사번이나 사용자 정보가 포함된 test/log 파일
-
-망분리 환경이 인터넷 package registry에 접근할 수 없다면, 승인된 외부 환경에서 Linux/Python 버전을 사내 build 환경과 맞춰 wheelhouse를 준비하거나 사내 package mirror를 사용합니다. 개발자의 `.venv` 디렉터리를 복사하는 방식은 사용하지 않습니다.
-
-### 4. 사내 PostgreSQL을 준비
-
-애플리케이션 전용 DB 계정을 만들고 최소 권한을 부여합니다. 일반 실행 계정과 migration 계정을 분리하는 것이 사내 표준이면 그 정책을 따릅니다.
-
-배포 전 migration job 또는 승인된 작업 환경에서 다음을 실행합니다.
+이미지를 빌드합니다.
 
 ```bash
-alembic upgrade head
+docker build -t pick-a-meet:local .
+docker images pick-a-meet
 ```
 
-적용 전 현재 revision과 backup/복구 방법을 확인하고, 운영 트래픽이 있는 schema 변경은 migration별 rollback 가능 여부를 검토합니다. 애플리케이션 pod 여러 개가 동시에 migration을 실행하도록 설정하지 않습니다.
-
-### 5. 이미지 저장소를 결정
-
-파일 업로드 기능을 추가한다면 `IMAGE_STORAGE_PATH`는 pod local filesystem이 아니라 다음 중 하나를 가리켜야 합니다.
-
-- 여러 pod가 공유하는 사내 file/object storage
-- 재시작 후에도 유지되는 PVC
-
-replica가 2개 이상이면 모든 pod가 같은 파일을 읽어야 합니다. PVC를 쓸 경우 access mode와 multi-attach 가능 여부를 먼저 확인하세요.
-
-### 6. 사내에서 Container image를 빌드
-
-사내 승인 base image와 package mirror를 사용해 빌드하고 registry에 push합니다. 운영 배포에는 `latest` 대신 변경되지 않는 version tag와 가능하면 digest를 사용합니다.
+WSL의 `127.0.0.1:5432` PostgreSQL을 사용하고 기존 개발 서버가 8000번에서 실행 중이라면, host network와 8001번으로 컨테이너를 실행합니다.
 
 ```bash
-docker build -t REGISTRY/pick-a-meet:VERSION .
-docker push REGISTRY/pick-a-meet:VERSION
+docker run -d \
+  --name pick-a-meet-smoke \
+  --network host \
+  --env-file .env \
+  pick-a-meet:local \
+  uvicorn app.main:app --host 0.0.0.0 --port 8001
 ```
 
-망분리 반입 도구가 image archive를 요구하면 사내 절차에 따라 export/import하고, 최종 registry의 digest를 기록합니다.
+```bash
+docker ps
+docker logs -f pick-a-meet-smoke
+curl http://localhost:8001/health/live
+curl http://localhost:8001/health/ready
+```
 
-### 7. ConfigMap과 Secret을 채운다
+종료와 재실행:
 
-ConfigMap에는 환경명, DB host/port/name, polling 주기, upload 경로처럼 비밀이 아닌 값을 둡니다. Secret에는 최소 다음 값을 둡니다.
+```bash
+docker stop pick-a-meet-smoke
+docker start pick-a-meet-smoke
+```
 
-- `DATABASE_USER`
-- `DATABASE_PASSWORD`
-- `SESSION_SECRET_KEY`
+완전히 지울 때만 정지 후 다음을 실행합니다.
 
-HTTPS Ingress에서는 `SESSION_COOKIE_SECURE=true`로 설정합니다. Secret 실제 값은 Git의 manifest에 적지 않고 사내 Secret 관리 도구로 주입합니다.
+```bash
+docker rm pick-a-meet-smoke
+```
 
-### 8. Kubernetes에 순서대로 배포
+이 `--network host` 설정은 WSL 로컬 smoke test용입니다. 사내 Kubernetes에서는 ConfigMap의 실제 PostgreSQL IP로 연결합니다.
 
-권장 순서는 다음과 같습니다.
+## 주요 환경변수
 
-1. namespace와 Secret/ConfigMap 준비
-2. PVC 또는 공유 스토리지 mount 준비
-3. PostgreSQL 연결 확인
-4. Alembic migration을 한 번 실행
-5. Deployment와 ClusterIP Service 배포
-6. `/health/live`, `/health/ready` probe 확인
-7. Ingress/TLS 연결
-8. 사내 test 사용자로 smoke test
-9. 정상 확인 후 사내 트래픽 연결
+| 변수 | 로컬 용도 |
+|---|---|
+| `DATABASE_HOST`, `DATABASE_PORT` | PostgreSQL 주소와 port |
+| `DATABASE_NAME`, `DATABASE_USER`, `DATABASE_PASSWORD` | DB 접속 정보 |
+| `SESSION_SECRET_KEY` | Cookie 서명 key, 최소 32자 |
+| `ADMIN_CONSOLE_PASSWORD` | Admin 메뉴 추가 비밀번호 |
+| `SESSION_TIMEOUT_SECONDS` | Session 만료 시간 |
+| `SESSION_COOKIE_SECURE` | 로컬 HTTP에서는 `false` |
+| `POLLING_INTERVAL_SECONDS` | 카드 현황 갱신 주기, 기본 5초 |
+| `TRUSTED_PROXY` | 로컬에서는 `false` |
 
-현재 신청 시간 캐시는 프로세스 메모리를 사용하므로 Uvicorn worker와 Kubernetes replica를 모두 1개로 유지합니다. 여러 프로세스로 확장하려면 먼저 Redis 같은 공유 캐시를 도입합니다.
+전체 예시는 [.env.example](.env.example)을 참고합니다.
 
-### 9. Ingress 뒤 client IP를 검증
-
-브라우저가 보낸 임의의 `X-Forwarded-For`를 그대로 신뢰하면 안 됩니다. Ingress controller가 기존 header를 어떻게 제거/추가하는지 확인하고, 신뢰 proxy에서 온 요청에 한해서만 실제 client IP를 해석합니다.
-
-검증이 끝나기 전에는 `TRUSTED_PROXY=false`를 유지하세요. IP 변경 확인은 보조 경고 수단이지 강한 본인인증 수단이 아닙니다.
-
-### 10. 배포 직후 smoke test
+## 디렉터리
 
 ```text
-GET /health/live   → 200
-GET /health/ready  → 200
+app/                    FastAPI 애플리케이션
+  models/               SQLAlchemy 모델
+  policies/             Admin·Host·소유권 접근 정책
+  routers/              일반·Admin·Host HTTP route
+  services/             업무 검증, 조회 표현, 신청 transaction
+  templates/            Jinja2 화면과 공통 partial
+  static/               CSS, JavaScript, 내장 글꼴
+migrations/             Alembic schema migration
+scripts/                개발 seed, DB·최초 Admin bootstrap
+tests/                  자동화 테스트
+k8s/                    사내 Kubernetes manifest 예시
+Dockerfile              운영 container image 정의
+docker-compose.yml      로컬 PostgreSQL
 ```
 
-그 뒤 UI에서 다음을 확인합니다.
+## 구현 메모
 
-- 최초 로그인, 동일 IP 로그인, 다른 IP 확인 흐름
-- 일반 사용자 `/admin` 접근 시 403
-- Admin 사용자/모임 관리
-- 신청/취소/재신청과 정원 차단
-- 두 브라우저에서 마지막 한 자리 동시 신청
-- 5초 polling과 신청 직후 즉시 반영
-- 일반 사용자 HTML/API에 Host 정보·신청자 사번이 없는지 확인
-
-### 11. 운영 전 마지막 점검
-
-- Secret과 사번이 application log에 출력되지 않는지 확인
-- HTTPS, Secure/HttpOnly/SameSite cookie 확인
-- DB backup, migration 실패, image rollback 절차 확인
-- readiness 실패 시 pod가 트래픽에서 제외되는지 확인
-- upload volume 용량과 권한, backup 정책 확인
-- CPU/memory request/limit와 200명 polling 부하 결과 확인
-- 최초 Admin을 만드는 승인된 bootstrap 절차를 수행하고 임시 수단은 제거
-
-## 배포 실패 시 확인 순서
-
-- `/health/live` 실패: process start command, port, image log 확인
-- `live` 성공/`ready` 실패: DB DNS, port, credential, TLS, migration 상태 확인
-- 로그인 후 Session 유지 실패: pod별 `SESSION_SECRET_KEY` 일치 여부, HTTPS와 Secure cookie 확인
-- 업로드 파일이 사라짐: 업로드 기능을 도입한 경우 `IMAGE_STORAGE_PATH` mount와 PVC/shared storage 확인
-- 실제 client IP가 모두 동일: Ingress forwarded header와 trusted proxy 설정 확인
-- 신청 정합성 오류: PostgreSQL을 사용 중인지, 최신 migration/constraint가 적용됐는지 확인
-
-## 중지 및 정리
-
-로컬 앱은 실행 terminal에서 `Ctrl+C`로 중지합니다. PostgreSQL container만 내리되 data를 보존하려면:
-
-```bash
-docker compose down
-```
-
-PostgreSQL volume 삭제는 모든 로컬 DB 데이터를 지우므로 일반적인 중지 절차에 포함하지 않습니다.
-
-## 보안 메모
-
-- ID/사번은 query string으로 보내지 않고 사번 전체를 log에 남기지 않습니다.
-- UI에서 버튼을 숨기는 것과 별개로 모든 Admin/Host 권한을 backend에서 검사합니다.
-- 추후 Rich Text나 파일 업로드를 도입하면 HTML allowlist와 실제 파일 형식·크기 검사를 함께 적용합니다.
-- 신청 가능 여부는 화면 표시와 무관하게 transaction 안에서 최신 값으로 다시 검증합니다.
-- 운영 Secret과 개인정보가 포함된 파일을 issue, chat, Git commit에 첨부하지 않습니다.
+- DB schema 변경은 반드시 Alembic revision으로 남기며 `create_all()`과 수동 DDL을 섞지 않습니다.
+- 신청 시작 시각은 DB에 저장하고 서버 시작 시 메모리에 적재합니다. 이후 화면과 신청 검증은 메모리 값을 사용합니다.
+- 현재 신청 시간 캐시는 단일 프로세스 기준이므로 로컬과 사내 모두 worker/replica 1개를 사용합니다. 다중 replica는 공유 캐시 도입 후 진행합니다.
+- 신청·취소 POST는 화면 상태를 신뢰하지 않고 transaction 안에서 사용자, Host, 기존 신청, 모임 상태와 정원을 다시 검사합니다.
+- ID·사번은 query string이나 application log에 남기지 않고, 실제 Secret과 개인정보 파일을 Git에 commit하지 않습니다.
