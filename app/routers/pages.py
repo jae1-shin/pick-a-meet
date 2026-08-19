@@ -278,6 +278,10 @@ async def apply(
         "ALREADY_REGISTERED": ("danger", "이미 다른 모임을 신청했습니다."),
         "MEETING_NOT_OPEN": ("danger", "신청 가능한 모임이 아닙니다."),
         "MEETING_FULL": ("danger", "방금 모집이 마감되었습니다."),
+        "PART_LIMIT_REACHED": (
+            "danger",
+            "같은 파트 신청 인원 제한으로 신청할 수 없습니다.",
+        ),
     }
     request.session["flash"] = messages[result]
     return RedirectResponse("/meetings", status_code=303)

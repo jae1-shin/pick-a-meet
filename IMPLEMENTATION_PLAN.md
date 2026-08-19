@@ -59,6 +59,7 @@ pyproject.toml docker-compose.yml Dockerfile .env.example README.md
 
 - 신청 트랜잭션의 잠금 순서는 `member FOR UPDATE` → `meeting FOR UPDATE`로 고정한다. 이를 통해 동일 사용자의 서로 다른 모임 동시 요청도 직렬화한다.
 - 잠금 후 member 활성/신청권한, 유효 OPEN 모임 Host 여부, 기존 registration, meeting OPEN, 최신 count와 capacity를 재검증한다.
+- 기본적으로 모임별 같은 파트는 1명으로 제한한다. 활성 파트원이 `OPEN + CLOSED` 모임 수보다 많을 때만 2명까지 허용하며, 한 모임에서 2명이 된 파트는 하나만 허용한다. 신청 가능 여부는 파트원 수 계산에 사용하지 않는다.
 - registration과 APPLY history를 같은 트랜잭션에서 기록한다. `UNIQUE(member_id)` 충돌은 `ALREADY_REGISTERED` 업무 충돌로 변환한다.
 - 취소도 member 잠금 후 세션 사용자의 registration만 삭제하고 CANCEL history를 같은 트랜잭션에 기록한다.
 - 모든 코드 경로에서 잠금 순서를 동일하게 유지해 교착 가능성을 줄인다.

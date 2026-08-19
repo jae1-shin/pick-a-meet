@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
 from app.models import Meeting, MeetingHost, Member, Module, Registration
+from app.services.part_registration_policy import part_registration_allowed
 
 
 KOREAN_WEEKDAYS = ("월", "화", "수", "목", "금", "토", "일")
@@ -76,10 +77,32 @@ async def load_public_meeting_views(
     applicants = await load_applicants(
         db, [meeting.meeting_id for meeting, _ in rows]
     )
+    current_part_id = member.module.part_id
+    active_part_member_count = await db.scalar(
+        select(func.count())
+        .select_from(Member)
+        .join(Module, Module.module_id == Member.module_id)
+        .where(
+            Module.part_id == current_part_id,
+            Member.active.is_(True),
+        )
+    )
+    distribution_meeting_count = sum(
+        1 for meeting, _ in rows if meeting.status in ("OPEN", "CLOSED")
+    )
     seoul = ZoneInfo("Asia/Seoul")
     views = []
     for meeting, applied_count in rows:
         start_at = meeting.start_at.astimezone(seoul)
+        part_allowed = part_registration_allowed(
+            candidate_part_id=current_part_id,
+            applicant_part_ids=(
+                applicant.module.part_id
+                for applicant in applicants[meeting.meeting_id]
+            ),
+            active_part_member_count=active_part_member_count or 0,
+            distribution_meeting_count=distribution_meeting_count,
+        )
         views.append(
             {
                 "meeting": meeting,
@@ -91,6 +114,7 @@ async def load_public_meeting_views(
                     active_registration
                     and active_registration.meeting_id == meeting.meeting_id
                 ),
+                "has_active_registration": active_registration is not None,
                 "can_apply": bool(
                     meeting.status == "OPEN"
                     and registration_open
@@ -98,7 +122,9 @@ async def load_public_meeting_views(
                     and not is_open_host
                     and active_registration is None
                     and applied_count < meeting.capacity
+                    and part_allowed
                 ),
+                "part_limit_reached": not part_allowed,
                 "applicants": applicants[meeting.meeting_id],
             }
         )
