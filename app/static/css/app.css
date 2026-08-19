@@ -28,6 +28,7 @@ button, .button { background: #0d6efd; border: 1px solid #0d6efd; border-radius:
 button:disabled { background: #adb5bd; border-color: #adb5bd; cursor: not-allowed; }
 .secondary { background: #fff; border-color: #6c757d; color: #495057; }
 .alert { background: #f8d7da; border: 1px solid #f1aeb5; border-radius: .375rem; color: #58151c; padding: .75rem; }
+.alert.success { background: #d1e7dd; border-color: #a3cfbb; color: #0a3622; }
 .demo-accounts { border-top: 1px solid #dee2e6; margin-top: 1.5rem; padding-top: 1rem; }
 .demo-accounts p { margin: .5rem 0; }
 .page-heading { align-items: flex-start; display: flex; justify-content: space-between; margin-bottom: 2rem; }

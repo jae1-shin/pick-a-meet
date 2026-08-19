@@ -1,5 +1,6 @@
 import hmac
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request, status
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -12,6 +13,7 @@ from app.config import get_settings
 from app.database import get_db
 from app.models import Meeting, MeetingHost, Member, Module, Part, Registration
 from app.services.session_service import csrf_token, verify_csrf
+from app.services.registration_service import apply_to_meeting, cancel_registration
 
 
 router = APIRouter()
@@ -56,11 +58,38 @@ async def meetings_page(
             .order_by(Meeting.start_at)
         )
     ).all()
+    active_registration = await db.scalar(
+        select(Registration).where(Registration.member_id == member.member_id)
+    )
+    is_open_host = bool(
+        await db.scalar(
+            select(func.count())
+            .select_from(MeetingHost)
+            .join(Meeting, Meeting.meeting_id == MeetingHost.meeting_id)
+            .where(
+                MeetingHost.member_id == member.member_id,
+                Meeting.status == "OPEN",
+            )
+        )
+    )
+    seoul = ZoneInfo("Asia/Seoul")
     meeting_views = [
         {
             "meeting": meeting,
             "applied_count": applied_count,
             "remaining_count": max(meeting.capacity - applied_count, 0),
+            "start_at": meeting.start_at.astimezone(seoul),
+            "end_at": meeting.end_at.astimezone(seoul),
+            "is_registered": bool(
+                active_registration
+                and active_registration.meeting_id == meeting.meeting_id
+            ),
+            "can_apply": bool(
+                member.apply_enabled
+                and not is_open_host
+                and active_registration is None
+                and applied_count < meeting.capacity
+            ),
         }
         for meeting, applied_count in rows
     ]
@@ -71,8 +100,53 @@ async def meetings_page(
             "member": member,
             "meetings": meeting_views,
             "csrf_token": csrf_token(request),
+            "flash": request.session.pop("flash", None),
+            "is_open_host": is_open_host,
         },
     )
+
+
+@router.post("/meetings/{meeting_id}/apply")
+async def apply(
+    meeting_id: int,
+    request: Request,
+    csrf: str = Form(...),
+    db: AsyncSession = Depends(get_db),
+) -> RedirectResponse:
+    verify_csrf(request, csrf)
+    member_id = request.session.get("member_id")
+    if not member_id:
+        return RedirectResponse("/login", status_code=303)
+    result = await apply_to_meeting(db, member_id, meeting_id)
+    messages = {
+        "APPLIED": ("success", "신청이 완료되었습니다."),
+        "NOT_ELIGIBLE": ("danger", "신청 가능한 사용자가 아닙니다."),
+        "HOST_NOT_ALLOWED": ("danger", "현재 모임 Host는 신청할 수 없습니다."),
+        "ALREADY_REGISTERED": ("danger", "이미 다른 모임을 신청했습니다."),
+        "MEETING_NOT_OPEN": ("danger", "신청 가능한 모임이 아닙니다."),
+        "MEETING_FULL": ("danger", "방금 모집이 마감되었습니다."),
+    }
+    request.session["flash"] = messages[result]
+    return RedirectResponse("/meetings", status_code=303)
+
+
+@router.post("/registrations/cancel")
+async def cancel(
+    request: Request,
+    csrf: str = Form(...),
+    db: AsyncSession = Depends(get_db),
+) -> RedirectResponse:
+    verify_csrf(request, csrf)
+    member_id = request.session.get("member_id")
+    if not member_id:
+        return RedirectResponse("/login", status_code=303)
+    result = await cancel_registration(db, member_id)
+    request.session["flash"] = (
+        ("success", "신청을 취소했습니다.")
+        if result == "CANCELLED"
+        else ("danger", "취소할 신청이 없습니다.")
+    )
+    return RedirectResponse("/meetings", status_code=303)
 
 
 @router.get("/admin", response_class=HTMLResponse)
