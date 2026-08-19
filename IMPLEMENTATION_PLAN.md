@@ -2,7 +2,7 @@
 
 ## 1. Architecture
 
-- 로컬: Browser → FastAPI(Uvicorn, Jinja2/HTMX) → Docker Compose PostgreSQL, 이미지 파일은 `./data/uploads`.
+- 로컬: Browser → FastAPI(Uvicorn, Jinja2/HTMX) → Docker Compose PostgreSQL.
 - 사내: Browser → Ingress → ClusterIP Service → stateless FastAPI Deployment → 사내 PostgreSQL + 공유 스토리지/PVC.
 - 세션은 서명 쿠키에 최소 `member_id`만 저장하고, 권한과 신청 가능 여부는 요청마다 DB에서 다시 읽는다.
 - 하나의 배포 단위와 하나의 DB를 유지하며 Redis, 메시지 큐, SPA, WebSocket은 도입하지 않는다.
@@ -11,7 +11,7 @@
 
 - Runtime: FastAPI, Uvicorn, SQLAlchemy 2, asyncpg, Alembic, Jinja2, python-multipart, pydantic-settings, itsdangerous, bleach, Pillow.
 - Test: pytest, pytest-asyncio, HTTPX.
-- Frontend: Bootstrap 5, HTMX, TOAST UI Editor를 버전 고정하여 `app/static/vendor`에 보관한다. 외부 CDN은 사용하지 않는다.
+- Frontend: Bootstrap 5와 HTMX를 버전 고정하여 `app/static/vendor`에 보관한다. 외부 CDN은 사용하지 않는다.
 
 ## 3. File Structure
 
@@ -31,7 +31,7 @@ pyproject.toml docker-compose.yml Dockerfile .env.example README.md
 - `part(id, name UNIQUE)`, `module(id, part_id FK, name, UNIQUE(part_id,name))`.
 - `member(id, login_id UNIQUE, employee_no UNIQUE, name, module_id FK, host_enabled, apply_enabled, admin_enabled, active, last_login_ip, last_login_at, timestamps)`.
 - `login_history(id, member_id FK, login_at, login_ip, ip_changed, login_result CHECK)`.
-- `meeting(id, place_name, start_at, end_at, description_content TEXT, capacity CHECK > 0, status CHECK, timestamps)`와 `CHECK(end_at > start_at)`.
+- `meeting(id, place_name, place_url, neighborhood, representative_menu, host_message TEXT, start_at, end_at, capacity CHECK > 0, status CHECK, timestamps)`와 `CHECK(end_at > start_at)`.
 - `meeting_host(meeting_id UNIQUE/FK, member_id FK)`.
 - `registration(id, member_id UNIQUE/FK, meeting_id FK, registered_at)`.
 - `registration_history(id, member_id FK, meeting_id FK, action CHECK, created_at)`.
@@ -47,14 +47,13 @@ pyproject.toml docker-compose.yml Dockerfile .env.example README.md
 ## 6. Authorization
 
 - 일반 route는 활성 로그인 사용자, `/admin/**`는 최신 `admin_enabled`, `/host/**`는 대상 모임의 실제 Host 관계를 검사한다.
-- 일반 응답 DTO/쿼리에는 Host와 신청자 식별 필드를 포함하지 않는다.
+- 일반 응답에는 Host 정보와 신청자 사번을 포함하지 않는다. 신청자 이름·ID·파트·모듈은 공개한다.
 - 상태 변경 POST에는 세션 사용자만 사용하고 CSRF 토큰을 검증한다.
 
 ## 7. Meeting
 
 - 생성/수정은 Admin에 집중한다. Host는 본인 모임 및 신청자 목록을 읽기만 한다.
-- HTML은 bleach allowlist로 정제하고 업로드는 크기, 실제 이미지 디코딩, 허용 포맷을 검사한 뒤 난수 파일명으로 저장한다.
-- Storage protocol을 두어 로컬 경로와 공유/PVC 경로를 설정으로 교체한다.
+- 모임 콘텐츠는 구조화된 일반 Text 필드로 관리하며 Rich Text와 이미지 업로드는 현재 범위에서 제외한다.
 
 ## 8. Registration
 

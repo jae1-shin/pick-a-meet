@@ -18,7 +18,6 @@
         <label>Host<select name="host_id" required><option value="">선택</option>{% for host in hosts %}<option value="{{ host.member_id }}" {% if host_id == host.member_id %}selected{% endif %}>{{ host.name }} ({{ host.login_id }})</option>{% endfor %}</select></label>
       </div>
       <label>호스트의 한마디<textarea name="host_message" rows="3" required>{{ target.host_message if target else '' }}</textarea></label>
-      <label>상세 설명<textarea name="description_content" rows="6">{{ target.description_content if target else '' }}</textarea></label>
       <button type="submit">저장</button>
     </form>
   </section>

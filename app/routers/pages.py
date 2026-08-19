@@ -21,6 +21,7 @@ from app.services.registration_service import apply_to_meeting, cancel_registrat
 router = APIRouter()
 templates = Jinja2Templates(directory=Path(__file__).resolve().parents[1] / "templates")
 settings = get_settings()
+KOREAN_WEEKDAYS = ("월", "화", "수", "목", "금", "토", "일")
 
 
 async def current_member(request: Request, db: AsyncSession) -> Member:
@@ -65,10 +66,31 @@ async def get_or_create_module(db: AsyncSession, part_name: str, module_name: st
     return module
 
 
+async def load_applicants(
+    db: AsyncSession, meeting_ids: list[int]
+) -> dict[int, list[Member]]:
+    applicants: dict[int, list[Member]] = {meeting_id: [] for meeting_id in meeting_ids}
+    if not meeting_ids:
+        return applicants
+    rows = (
+        await db.execute(
+            select(Registration.meeting_id, Member)
+            .join(Member, Member.member_id == Registration.member_id)
+            .options(joinedload(Member.module).joinedload(Module.part))
+            .where(Registration.meeting_id.in_(meeting_ids))
+            .order_by(Registration.meeting_id, Registration.registered_at)
+        )
+    ).all()
+    for meeting_id, applicant in rows:
+        applicants[meeting_id].append(applicant)
+    return applicants
+
+
 @router.get("/meetings", response_class=HTMLResponse)
 async def meetings_page(
     request: Request,
     group_by: str = Query("neighborhood", pattern="^(neighborhood|date)$"),
+    filter_value: str | None = Query(None, alias="filter", max_length=100),
     db: AsyncSession = Depends(get_db),
 ) -> HTMLResponse:
     try:
@@ -104,6 +126,9 @@ async def meetings_page(
         )
     )
     seoul = ZoneInfo("Asia/Seoul")
+    applicants = await load_applicants(
+        db, [meeting.meeting_id for meeting, _ in rows]
+    )
     meeting_views = [
         {
             "meeting": meeting,
@@ -111,6 +136,7 @@ async def meetings_page(
             "remaining_count": max(meeting.capacity - applied_count, 0),
             "start_at": meeting.start_at.astimezone(seoul),
             "end_at": meeting.end_at.astimezone(seoul),
+            "weekday": KOREAN_WEEKDAYS[meeting.start_at.astimezone(seoul).weekday()],
             "is_registered": bool(
                 active_registration
                 and active_registration.meeting_id == meeting.meeting_id
@@ -121,6 +147,7 @@ async def meetings_page(
                 and active_registration is None
                 and applied_count < meeting.capacity
             ),
+            "applicants": applicants[meeting.meeting_id],
         }
         for meeting, applied_count in rows
     ]
@@ -133,13 +160,41 @@ async def meetings_page(
             )
         )
         group_key = lambda item: item["start_at"].date().isoformat()
-        group_title = lambda item: item["start_at"].strftime("%Y년 %m월 %d일")
+        group_title = lambda item: (
+            f"{item['start_at'].strftime('%Y년 %m월 %d일')} ({item['weekday']})"
+        )
+        filter_options = [
+            {
+                "value": value,
+                "label": f"{start.strftime('%m.%d')} ({KOREAN_WEEKDAYS[start.weekday()]})",
+            }
+            for value, start in sorted(
+                {
+                    item["start_at"].date().isoformat(): item["start_at"]
+                    for item in meeting_views
+                }.items()
+            )
+        ]
     else:
         meeting_views.sort(
             key=lambda item: (item["meeting"].neighborhood, item["start_at"])
         )
         group_key = lambda item: item["meeting"].neighborhood
         group_title = lambda item: item["meeting"].neighborhood
+        filter_options = [
+            {"value": value, "label": value}
+            for value in sorted(
+                {item["meeting"].neighborhood for item in meeting_views}
+            )
+        ]
+
+    valid_filters = {option["value"] for option in filter_options}
+    if filter_value in valid_filters:
+        meeting_views = [
+            item for item in meeting_views if group_key(item) == filter_value
+        ]
+    else:
+        filter_value = None
 
     groups: list[dict[str, object]] = []
     for item in meeting_views:
@@ -154,6 +209,8 @@ async def meetings_page(
             "member": member,
             "groups": groups,
             "group_by": group_by,
+            "filter_value": filter_value,
+            "filter_options": filter_options,
             "csrf_token": csrf_token(request),
             "flash": request.session.pop("flash", None),
             "is_open_host": is_open_host,
@@ -470,10 +527,19 @@ async def admin_meetings_page(
             .order_by(Meeting.start_at)
         )
     ).all()
+    applicants = await load_applicants(
+        db, [meeting.meeting_id for meeting, _ in rows]
+    )
     return templates.TemplateResponse(
         request=request,
         name="admin/meetings.html",
-        context={"member": admin, "rows": rows, "seoul": ZoneInfo("Asia/Seoul")},
+        context={
+            "member": admin,
+            "rows": rows,
+            "seoul": ZoneInfo("Asia/Seoul"),
+            "weekdays": KOREAN_WEEKDAYS,
+            "applicants": applicants,
+        },
     )
 
 
@@ -497,7 +563,6 @@ async def admin_meeting_new(
     neighborhood: str = Form(...),
     representative_menu: str = Form(...),
     host_message: str = Form(...),
-    description_content: str = Form(""),
     start_at: str = Form(...),
     end_at: str = Form(...),
     capacity: int = Form(...),
@@ -524,7 +589,7 @@ async def admin_meeting_new(
             neighborhood=neighborhood.strip(),
             representative_menu=representative_menu.strip(),
             host_message=host_message.strip(),
-            description_content=description_content.strip(),
+            description_content="",
             start_at=start,
             end_at=end,
             capacity=capacity,
@@ -571,7 +636,6 @@ async def admin_meeting_edit(
     neighborhood: str = Form(...),
     representative_menu: str = Form(...),
     host_message: str = Form(...),
-    description_content: str = Form(""),
     start_at: str = Form(...),
     end_at: str = Form(...),
     capacity: int = Form(...),
@@ -600,7 +664,7 @@ async def admin_meeting_edit(
         target.neighborhood = neighborhood.strip()
         target.representative_menu = representative_menu.strip()
         target.host_message = host_message.strip()
-        target.description_content = description_content.strip()
+        target.description_content = ""
         target.start_at = start
         target.end_at = end
         target.capacity = capacity
@@ -637,10 +701,20 @@ async def host_page(
     ).all()
     if not hosted:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
+    applicants = await load_applicants(
+        db, [meeting.meeting_id for meeting in hosted]
+    )
     return templates.TemplateResponse(
         request=request,
         name="host/index.html",
-        context={"member": member, "meetings": hosted, "csrf_token": csrf_token(request)},
+        context={
+            "member": member,
+            "meetings": hosted,
+            "csrf_token": csrf_token(request),
+            "seoul": ZoneInfo("Asia/Seoul"),
+            "weekdays": KOREAN_WEEKDAYS,
+            "applicants": applicants,
+        },
     )
 
 
@@ -678,5 +752,6 @@ async def host_meeting_registrations(
             "meeting": meeting,
             "applicants": applicants,
             "seoul": ZoneInfo("Asia/Seoul"),
+            "weekdays": KOREAN_WEEKDAYS,
         },
     )

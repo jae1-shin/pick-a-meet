@@ -15,19 +15,21 @@
   {% if flash %}<div class="alert {{ 'success' if flash[0] == 'success' else '' }}" role="status">{{ flash[1] }}</div>{% endif %}
   <section>
     <div class="list-toolbar"><h2>모임 목록</h2><div class="view-toggle"><a class="{{ 'active' if group_by == 'neighborhood' else '' }}" href="/meetings?group_by=neighborhood">동네별</a><a class="{{ 'active' if group_by == 'date' else '' }}" href="/meetings?group_by=date">일시별</a></div></div>
+    <nav class="filter-chips" aria-label="모임 필터">
+      <a class="chip {{ 'active' if not filter_value else '' }}" href="/meetings?group_by={{ group_by }}">전체</a>
+      {% for option in filter_options %}<a class="chip {{ 'active' if filter_value == option.value else '' }}" href="/meetings?group_by={{ group_by }}&filter={{ option.value|urlencode }}">{{ option.label }}</a>{% endfor %}
+    </nav>
     {% for group in groups %}
       <section class="meeting-group">
         <h3 class="group-title">{{ group.title }}</h3>
         <div class="meeting-grid">
       {% for item in group['items'] %}
         <article class="card meeting-card">
-          <p class="eyebrow">{{ item.start_at.strftime('%Y.%m.%d %H:%M') }} – {{ item.end_at.strftime('%H:%M') }}</p>
-          <h3>{{ item.meeting.place_name }}</h3>
-          {% if item.meeting.place_url %}<p><a href="{{ item.meeting.place_url }}" target="_blank" rel="noopener noreferrer">지도에서 장소 보기 ↗</a></p>{% endif %}
+          <p class="eyebrow">{{ item.start_at.strftime('%Y.%m.%d') }} ({{ item.weekday }}) {{ item.start_at.strftime('%H:%M') }} – {{ item.end_at.strftime('%H:%M') }}</p>
+          <div class="meeting-title-row"><h3>{{ item.meeting.place_name }}</h3>{% if item.meeting.place_url %}<a class="map-icon" href="{{ item.meeting.place_url }}" target="_blank" rel="noopener noreferrer" aria-label="{{ item.meeting.place_name }} 지도 열기" title="지도 열기"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a7 7 0 0 0-7 7c0 5.2 7 13 7 13s7-7.8 7-13a7 7 0 0 0-7-7Zm0 9.5A2.5 2.5 0 1 1 12 6a2.5 2.5 0 0 1 0 5.5Z"/></svg></a>{% endif %}</div>
           <dl class="meeting-facts"><div><dt>동네</dt><dd>{{ item.meeting.neighborhood }}</dd></div><div><dt>대표 메뉴</dt><dd>{{ item.meeting.representative_menu }}</dd></div></dl>
-          <p>{{ item.meeting.description_content }}</p>
-          <blockquote>“{{ item.meeting.host_message }}”</blockquote>
-          <div class="capacity"><span>신청 {{ item.applied_count }} / {{ item.meeting.capacity }}</span><strong>잔여 {{ item.remaining_count }}명</strong></div>
+          <div class="host-message"><span>호스트의 한마디</span><blockquote>“{{ item.meeting.host_message }}”</blockquote></div>
+          <div class="capacity"><div class="applicant-tooltip" tabindex="0"><span>신청 {{ item.applied_count }} / {{ item.meeting.capacity }}</span><div class="tooltip-panel" role="tooltip"><strong>신청자</strong>{% if item.applicants %}<ul>{% for applicant in item.applicants %}<li><b>{{ applicant.name }}</b> · {{ applicant.login_id }}<small>{{ applicant.module.part.name }} / {{ applicant.module.name }}</small></li>{% endfor %}</ul>{% else %}<p>아직 신청자가 없습니다.</p>{% endif %}</div></div><strong>잔여 {{ item.remaining_count }}명</strong></div>
           {% if item.is_registered %}
             <form method="post" action="/registrations/cancel"><input type="hidden" name="csrf" value="{{ csrf_token }}"><button class="secondary" type="submit">신청 취소</button></form>
           {% elif item.can_apply %}

@@ -21,7 +21,7 @@
 - [ ] Host 권한만 있고 실제 Host가 아니면 신청 가능
 - [ ] Admin도 일반 사용자 신청 규칙 적용
 - [ ] CLOSED/CANCELLED/DRAFT 모임 신청 차단
-- [ ] 일반 응답 HTML/API에 Host 및 다른 신청자 식별정보 없음
+- [x] 일반 화면에 신청자 이름·ID·파트·모듈 표시, Host 정보·신청자 사번 비노출
 - [x] Host는 본인 모임 신청자의 이름·ID·파트·모듈만 조회 가능
 - [ ] Host가 다른 Host 모임 신청자 URL에 접근하면 403
 - [ ] 신청/취소 history가 같은 transaction에 기록

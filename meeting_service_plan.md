@@ -36,13 +36,18 @@
 
 - 모임 장소
 - 시간
-- 상세 설명
-- 설명에 포함된 이미지
+- 장소 바로가기 링크
+- 대표 동네
+- 대표 메뉴
+- Host의 한마디
 - 모집 정원
 - 현재 신청 인원
 - 잔여 인원
 - 신청 가능 여부
 - 본인의 신청 여부
+- 신청자 이름
+- 신청자 ID
+- 신청자 파트/모듈
 
 일반 사용자가 확인할 수 없는 정보:
 
@@ -50,8 +55,6 @@
 - Host ID
 - Host 사번
 - Host 파트/모듈
-- 신청자 이름
-- 신청자 ID
 - 신청자 사번
 
 ---
@@ -188,10 +191,6 @@ UI
 - Bootstrap 5 계열
 - System Font 우선
 
-Rich Text Editor
-- TOAST UI Editor
-  또는 사내 오픈소스 반입이 가능한 동등한 Editor
-
 Database
 - PostgreSQL
 
@@ -289,7 +288,6 @@ container / container-lg
 Bootstrap CSS
 Bootstrap JS
 HTMX
-TOAST UI Editor 관련 JS/CSS
 ```
 
 예:
@@ -746,9 +744,8 @@ admin_enabled = true
 
   ○○ 레스토랑
 
-  [장소 이미지]
-
-  광교중앙역에서 도보 5분입니다.
+  대표 메뉴: 파스타
+  Host의 한마디: 편하게 이야기 나눠요!
 
   신청 7 / 10
   잔여 3명
@@ -764,8 +761,8 @@ admin_enabled = true
 일반 사용자는 다음 기능만 필요하다.
 
 - 모임 목록 조회
-- 모임 장소/시간/설명 확인
-- 이미지 확인
+- 모임 일시/장소/장소 링크 확인
+- 대표 동네/대표 메뉴/Host의 한마디 확인
 - 각 모임 신청현황 숫자 확인
 - 모임 신청
 - 본인의 현재 신청 확인
@@ -792,7 +789,16 @@ admin_enabled = true
 모임 C     2 / 6      잔여 4
 ```
 
-하지만 **누가 신청했는지는 볼 수 없다.**
+각 모임의 신청자는 다음 정보까지 볼 수 있다.
+
+```text
+이름
+ID
+파트
+모듈
+```
+
+신청자의 사번은 일반 사용자에게 노출하지 않는다.
 
 ---
 
@@ -930,9 +936,12 @@ MEETING
 meeting_id PK
 
 place_name
+place_url
+neighborhood
+representative_menu
+host_message TEXT
 start_at
 end_at
-description_content TEXT
 
 capacity INTEGER
 status
@@ -979,102 +988,20 @@ UNIQUE(meeting_id)
 
 ---
 
-# 32. Rich Text Editor
+# 32. 모임 콘텐츠
 
-장소/시간/설명은 단순 Textarea가 아니라 Rich Text Editor를 사용한다.
-
-필수 기능:
-
-- 일반 Text
-- Heading
-- Bold
-- Italic
-- List
-- Link
-- 이미지 Upload
-- 이미지 삽입
-- 기존 내용 수정
-
-우선 후보:
+모임 콘텐츠는 Rich Text Editor나 이미지 없이 다음 구조화 필드로 관리한다.
 
 ```text
-TOAST UI Editor
+일시
+장소
+장소 바로가기 링크
+대표 동네
+대표 메뉴
+Host의 한마디
 ```
 
-사내 반입정책상 문제가 있다면 동일 요구사항을 만족하는 오픈소스 Editor로 교체한다.
-
----
-
-# 33. Editor 데이터
-
-PostgreSQL에서는 장문 데이터 저장에:
-
-```text
-TEXT
-```
-
-를 사용한다.
-
-논리적으로 CLOB 역할이다.
-
-```text
-MEETING.description_content
-```
-
-에 Editor 결과를 저장한다.
-
----
-
-# 34. 이미지 저장
-
-이미지를 Base64로 `description_content`에 직접 넣지 않는다.
-
-구조:
-
-```text
-Editor
- ↓
-POST /api/images
- ↓
-FastAPI
- ↓
-File Storage
- ↓
-Image URL
- ↓
-description_content에 URL 저장
-```
-
----
-
-# 35. 로컬 이미지 저장
-
-WSL 개발 환경에서는 단순화를 위해 Local Directory를 사용할 수 있다.
-
-예:
-
-```text
-./data/uploads/
-```
-
-단, Storage 구현은 Interface/설정으로 분리하여 사내 반입 후 경로만 변경할 수 있게 한다.
-
----
-
-# 36. K8s 이미지 저장
-
-사내 배포 시 Container Local File System에는 영구 이미지를 저장하지 않는다.
-
-우선순위:
-
-```text
-1. 사내 Shared File Storage / Object Storage
-2. Kubernetes Persistent Volume
-```
-
-Pod 재시작 후에도 파일이 유지되어야 한다.
-
-Replica가 여러 개라면 모든 Pod에서 동일 파일을 조회할 수 있어야 한다.
+`host_message`는 PostgreSQL `TEXT`로 저장한다. 이미지 업로드와 별도 Storage는 현재 범위에서 제외한다.
 
 ---
 
@@ -2317,8 +2244,8 @@ Microservice
 
 1. FastAPI + Jinja2 + HTMX + Bootstrap + PostgreSQL로 단순하게 구현한다.
 2. WSL에서 먼저 완성하고 사내 K8s로 가져갈 수 있게 환경설정을 분리한다.
-3. 일반 사용자는 장소/시간/설명/이미지와 모임별 신청현황 숫자만 확인한다.
-4. 일반 사용자에게 Host와 신청자 명단은 노출하지 않는다.
+3. 일반 사용자는 일시/장소/동네/대표 메뉴/Host의 한마디, 신청현황과 신청자 이름/ID/파트/모듈을 확인한다.
+4. 일반 사용자에게 Host 정보와 신청자 사번은 노출하지 않는다.
 5. 사용자는 신청 및 취소가 가능하다.
 6. 한 사람은 동시에 한 모임만 신청할 수 있다.
 7. 취소 후 다시 신청할 수 있다.
