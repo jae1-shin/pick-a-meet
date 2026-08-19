@@ -2,7 +2,7 @@
 
 ## 1. Architecture
 
-- 로컬: Browser → FastAPI(Uvicorn, Jinja2/HTMX) → Docker Compose PostgreSQL.
+- 로컬: Browser → FastAPI(Uvicorn, Jinja2/순수 JavaScript) → Docker Compose PostgreSQL.
 - 사내: Browser → Ingress → ClusterIP Service → stateless FastAPI Deployment → 사내 PostgreSQL + 공유 스토리지/PVC.
 - 세션은 서명 쿠키에 최소 `member_id`만 저장하고, 권한과 신청 가능 여부는 요청마다 DB에서 다시 읽는다.
 - 하나의 배포 단위와 하나의 DB를 유지하며 Redis, 메시지 큐, SPA, WebSocket은 도입하지 않는다.
@@ -11,7 +11,7 @@
 
 - Runtime: FastAPI, Uvicorn, SQLAlchemy 2, asyncpg, Alembic, Jinja2, python-multipart, pydantic-settings, itsdangerous, bleach, Pillow.
 - Test: pytest, pytest-asyncio, HTTPX.
-- Frontend: Bootstrap 5와 HTMX를 버전 고정하여 `app/static/vendor`에 보관한다. 외부 CDN은 사용하지 않는다.
+- Frontend: 순수 CSS/JavaScript와 서버 렌더링을 사용하며 글꼴을 포함한 정적 자산은 앱 내부에 보관한다. 외부 CDN은 사용하지 않는다.
 
 ## 3. File Structure
 
@@ -71,7 +71,7 @@ pyproject.toml docker-compose.yml Dockerfile .env.example README.md
 
 ## 10. Polling
 
-- `/meetings/status-fragment`를 HTMX `every {설정값}s`로 갱신한다.
+- `/meetings/status-fragment`를 순수 JavaScript로 설정 주기마다 갱신한다.
 - 목록 전체가 아닌 내 신청과 카드 상태 영역만 반환한다. 신청/취소 응답도 동일 fragment를 반환해 즉시 동기화한다.
 
 ## 11. Image
@@ -103,7 +103,7 @@ pyproject.toml docker-compose.yml Dockerfile .env.example README.md
 1. 실행 골격, 설정, DB 연결, 기본 템플릿, health endpoint.
 2. SQLAlchemy 모델과 최초 Alembic migration.
 3. 로그인/IP 확인/서명 세션/CSRF.
-4. Admin member 및 meeting CRUD, editor와 이미지.
+4. Admin member 및 meeting CRUD와 공통 모임 편집 폼.
 5. 일반 목록, eligibility, 신청/취소 transaction, polling.
 6. Host 읽기 화면과 전체 권한 테스트.
 7. 동시성/load/security 검증.

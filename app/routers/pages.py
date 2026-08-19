@@ -7,6 +7,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import get_settings
 from app.database import get_db
 from app.policies.access import current_member
 from app.services.meeting_view import (
@@ -27,6 +28,7 @@ from app.services.session_service import csrf_token, verify_csrf
 router = APIRouter(tags=["meetings"])
 templates = Jinja2Templates(directory=Path(__file__).resolve().parents[1] / "templates")
 templates.env.filters["korean_time"] = korean_time
+settings = get_settings()
 
 
 @router.get("/registration-window/status")
@@ -116,21 +118,16 @@ async def font_preview_page(request: Request) -> HTMLResponse:
     )
 
 
-@router.get("/meetings", response_class=HTMLResponse)
-async def meetings_page(
+async def _meeting_list_context(
     request: Request,
+    member,
+    db: AsyncSession,
+    *,
     group_by: str = Query("all", pattern="^(all|neighborhood|date)$"),
     neighborhood_filters: list[str] | None = Query(None, alias="neighborhood"),
     date_filters: list[str] | None = Query(None, alias="date"),
-    db: AsyncSession = Depends(get_db),
-) -> HTMLResponse:
-    if not request.session.get("member_id"):
-        return RedirectResponse("/login", status_code=303)
-    member = await current_member(request, db)
+) -> dict[str, object]:
     registration_open = registration_is_open()
-    if not registration_open and not (member.admin_enabled or member.host_enabled):
-        return RedirectResponse("/waiting", status_code=303)
-
     meeting_views, is_open_host = await load_public_meeting_views(
         db, member, registration_open=registration_open
     )
@@ -181,21 +178,83 @@ async def meetings_page(
         if not groups or groups[-1]["key"] != key:
             groups.append({"key": key, "title": group_title(item), "items": []})
         groups[-1]["items"].append(item)
+    refresh_params = [("group_by", group_by)] + preserved_filter_params
+    return {
+        "member": member,
+        "groups": groups,
+        "group_by": group_by,
+        **filter_context,
+        "view_hrefs": view_hrefs,
+        "csrf_token": csrf_token(request),
+        "is_open_host": is_open_host,
+        "registration_open": registration_open,
+        "meeting_refresh_href": "/meetings/status-fragment?"
+        + urlencode(refresh_params),
+        "polling_interval_ms": settings.polling_interval_seconds * 1000,
+    }
+
+
+@router.get("/meetings", response_class=HTMLResponse)
+async def meetings_page(
+    request: Request,
+    group_by: str = Query("all", pattern="^(all|neighborhood|date)$"),
+    neighborhood_filters: list[str] | None = Query(None, alias="neighborhood"),
+    date_filters: list[str] | None = Query(None, alias="date"),
+    db: AsyncSession = Depends(get_db),
+) -> HTMLResponse:
+    if not request.session.get("member_id"):
+        return RedirectResponse("/login", status_code=303)
+    member = await current_member(request, db)
+    if not registration_is_open() and not (
+        member.admin_enabled or member.host_enabled
+    ):
+        return RedirectResponse("/waiting", status_code=303)
+    context = await _meeting_list_context(
+        request,
+        member,
+        db,
+        group_by=group_by,
+        neighborhood_filters=neighborhood_filters,
+        date_filters=date_filters,
+    )
+    context["flash"] = request.session.pop("flash", None)
     return templates.TemplateResponse(
         request=request,
         name="meetings/list.html",
-        context={
-            "member": member,
-            "groups": groups,
-            "group_by": group_by,
-            **filter_context,
-            "view_hrefs": view_hrefs,
-            "csrf_token": csrf_token(request),
-            "flash": request.session.pop("flash", None),
-            "is_open_host": is_open_host,
-            "registration_open": registration_open,
-        },
+        context=context,
     )
+
+
+@router.get("/meetings/status-fragment", response_class=HTMLResponse)
+async def meetings_status_fragment(
+    request: Request,
+    group_by: str = Query("all", pattern="^(all|neighborhood|date)$"),
+    neighborhood_filters: list[str] | None = Query(None, alias="neighborhood"),
+    date_filters: list[str] | None = Query(None, alias="date"),
+    db: AsyncSession = Depends(get_db),
+) -> HTMLResponse:
+    if not request.session.get("member_id"):
+        raise HTTPException(status_code=401)
+    member = await current_member(request, db)
+    if not registration_is_open() and not (
+        member.admin_enabled or member.host_enabled
+    ):
+        raise HTTPException(status_code=409)
+    context = await _meeting_list_context(
+        request,
+        member,
+        db,
+        group_by=group_by,
+        neighborhood_filters=neighborhood_filters,
+        date_filters=date_filters,
+    )
+    response = templates.TemplateResponse(
+        request=request,
+        name="meetings/_groups.html",
+        context=context,
+    )
+    response.headers["Cache-Control"] = "no-store"
+    return response
 
 
 @router.post("/meetings/{meeting_id}/apply")

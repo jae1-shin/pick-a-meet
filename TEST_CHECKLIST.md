@@ -36,7 +36,7 @@
 - [x] 신청자 명단 클립보드 복사와 공통 toast 표시
 - [x] Admin 사용자·모임 테이블 헤더 오름차순/내림차순 정렬
 - [ ] 신청/취소 history가 같은 transaction에 기록
-- [ ] HTMX polling과 신청 직후 fragment 갱신
+- [x] 5초 polling으로 현재 필터를 유지한 카드 현황 갱신, 신청 직후 전체 상태 재조회
 - [ ] 이미지 MIME/크기/디코딩/HTML sanitization
 
 ## P2 — 사내 반입 전
@@ -47,4 +47,4 @@
 - [ ] Session/CSRF/Cookie/권한 보안 점검
 - [ ] Container smoke test와 non-root 실행
 - [ ] K8s probe, Secret/ConfigMap, PVC, Ingress client IP 확인
-- [ ] Bootstrap/HTMX/Editor 정적 자산 및 license 오프라인 반입
+- [ ] 내장 글꼴 등 정적 자산과 license 오프라인 반입

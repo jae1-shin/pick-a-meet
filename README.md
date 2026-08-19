@@ -6,6 +6,8 @@ GitHub repository 이름은 `pick-a-meet`을 사용합니다.
 
 상세 설계와 단계별 구현 범위는 [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md), 원본 요구사항은 [meeting_service_plan.md](meeting_service_plan.md)를 참고하세요.
 
+기존 사내 PostgreSQL과 Kubernetes에 설치하는 절차는 [INTERNAL_DEPLOYMENT.md](INTERNAL_DEPLOYMENT.md)에 별도로 정리했습니다.
+
 ## 현재 구현 상태
 
 - 완료: 프로젝트 골격, 환경변수 설정, 비동기 PostgreSQL 연결, 서명 Cookie Session, Jinja2 화면
@@ -18,10 +20,10 @@ GitHub repository 이름은 `pick-a-meet`을 사용합니다.
 - 완료: Admin 신청 시작 시각 설정, 일반 사용자 대기 화면·잔여 시간·10초 서버 보정·자동 진입
 - 완료: 신청 시작 전에도 Admin/Host 화면 접근, 실제 신청·취소 요청은 인메모리 시각으로 차단
 - 완료: 사용자 권한 조합과 신청/Host 배정 상태를 확인하는 서버 검증 및 Host/신청 DB 제약
+- 완료: 현재 필터·보기 방식을 유지하는 5초 카드 현황 자동 갱신
 - 완료: Gowun Dodum 글꼴과 SIL OFL 라이선스를 `app/static/fonts/`에 내장
 - 완료: `/health/live`, `/health/ready`, PostgreSQL Docker Compose, Python 테스트 환경
-- 진행 예정: HTMX polling, 동시성 부하 테스트, K8s manifest
-- 아직 HTMX polling은 포함하지 않았습니다. 도입한다면 최종 사내 반입 전에 버전을 고정해 `app/static/vendor/`에 저장해야 합니다.
+- 진행 예정: 동시성 부하 테스트, K8s manifest
 
 ## 현재 개발 서버 접속
 
@@ -198,7 +200,7 @@ DB 모델이 추가된 이후 integration/concurrency 테스트는 전용 Postgr
 4. Admin 사용자/모임 관리
 5. 일반 모임 신청 화면, eligibility, 신청/취소 transaction
 6. Host/Admin 관리 화면과 공통 모임 편집기
-7. HTMX 5초 polling
+7. 순수 JavaScript 5초 fragment polling
 8. PostgreSQL 동시성, 권한, 브라우저, load/security 테스트
 9. Docker image와 Kubernetes manifest
 
@@ -314,9 +316,9 @@ HTTPS Ingress에서는 `SESSION_COOKIE_SECURE=true`로 설정합니다. Secret �
 6. `/health/live`, `/health/ready` probe 확인
 7. Ingress/TLS 연결
 8. 사내 test 사용자로 smoke test
-9. 정상 확인 후 replica 또는 트래픽 확대
+9. 정상 확인 후 사내 트래픽 연결
 
-초기에는 replica 1개로 기능을 확인하고, 사내 HA 기준에 따라 2개 이상으로 확장합니다. Session은 서명 Cookie이므로 pod affinity/sticky session에 의존하지 않아야 합니다.
+현재 신청 시간 캐시는 프로세스 메모리를 사용하므로 Uvicorn worker와 Kubernetes replica를 모두 1개로 유지합니다. 여러 프로세스로 확장하려면 먼저 Redis 같은 공유 캐시를 도입합니다.
 
 ### 9. Ingress 뒤 client IP를 검증
 
