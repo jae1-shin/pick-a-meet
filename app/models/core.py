@@ -91,7 +91,6 @@ class Meeting(TimestampMixin, Base):
     __tablename__ = "meeting"
     __table_args__ = (
         CheckConstraint("capacity > 0", name="capacity_positive"),
-        CheckConstraint("end_at > start_at", name="valid_time_range"),
         CheckConstraint(
             "status IN ('DRAFT', 'OPEN', 'CLOSED', 'CANCELLED')",
             name="status",
@@ -106,7 +105,6 @@ class Meeting(TimestampMixin, Base):
     representative_menu: Mapped[str] = mapped_column(String(200), nullable=False)
     host_message: Mapped[str] = mapped_column(Text, nullable=False)
     start_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    end_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     description_content: Mapped[str] = mapped_column(Text, nullable=False)
     capacity: Mapped[int] = mapped_column(Integer, nullable=False)
     status: Mapped[str] = mapped_column(String(20), nullable=False, index=False)

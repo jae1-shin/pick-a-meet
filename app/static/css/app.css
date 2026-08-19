@@ -1,6 +1,14 @@
+@font-face {
+  font-display: swap;
+  font-family: "Gowun Dodum";
+  font-style: normal;
+  font-weight: 400;
+  src: url("/static/fonts/GowunDodum-Regular.woff2") format("woff2");
+}
+
 :root {
   color-scheme: light;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: "Gowun Dodum", system-ui, sans-serif;
   color: #212529;
   background: #f8f9fa;
 }
@@ -9,8 +17,14 @@
 body { margin: 0; }
 .container { width: min(100% - 2rem, 960px); margin-inline: auto; }
 .site-header { background: #fff; border-bottom: 1px solid #dee2e6; margin-bottom: 2rem; }
-.site-header nav { min-height: 3.5rem; display: flex; align-items: center; }
+.site-header nav { align-items: center; display: flex; gap: 1.25rem; justify-content: space-between; min-height: 3.5rem; }
 .brand { color: #212529; font-weight: 700; text-decoration: none; }
+.gnb-user { align-items: center; display: flex; gap: 1rem; min-width: 0; }
+.gnb-links { display: flex; gap: .65rem; }
+.gnb-links a { color: #0d6efd; font-size: .85rem; text-decoration: none; }
+.gnb-identity { align-items: center; display: flex; gap: .55rem; min-width: 0; }
+.gnb-identity span { border-left: 1px solid #dee2e6; color: #6c757d; font-size: .78rem; padding-left: .55rem; white-space: nowrap; }
+.gnb-user form { margin: 0; }
 .card { background: #fff; border: 1px solid #dee2e6; border-radius: .5rem; padding: 1.5rem; }
 .eyebrow { color: #6c757d; font-size: .875rem; font-weight: 600; margin: 0 0 .5rem; }
 h1 { font-size: clamp(1.5rem, 5vw, 2rem); margin: 0 0 1rem; }
@@ -44,6 +58,8 @@ button:disabled { background: #adb5bd; border-color: #adb5bd; cursor: not-allowe
 .meeting-card p { margin: .35rem 0; }
 .meeting-card blockquote { border-left: 3px solid #0d6efd; color: #495057; font-size: .9rem; margin: .3rem 0 .65rem; padding-left: .65rem; }
 .meeting-card form, .meeting-card > button { margin-top: auto; }
+.host-card-actions { display: flex; gap: .5rem; margin-top: auto; }
+.host-card-actions .button { flex: 1; padding-inline: .5rem; text-align: center; }
 .meeting-title-row { align-items: flex-start; display: flex; gap: .4rem; justify-content: space-between; }
 .map-icon { color: #0d6efd; flex: 0 0 auto; height: 1.35rem; width: 1.35rem; }
 .map-icon svg { fill: currentColor; height: 100%; width: 100%; }
@@ -58,15 +74,22 @@ button:disabled { background: #adb5bd; border-color: #adb5bd; cursor: not-allowe
 .view-toggle a.active { background: #fff; color: #0d6efd; font-weight: 700; }
 .meeting-group { margin-bottom: 2rem; }
 .group-title { border-bottom: 1px solid #dee2e6; padding-bottom: .65rem; }
-.filter-chips { display: flex; flex-wrap: wrap; gap: .5rem; margin: .75rem 0 1.5rem; }
+.meeting-filters { margin: .75rem 0 1.5rem; }
+.filter-row { align-items: center; display: flex; gap: .75rem; margin-top: .55rem; }
+.filter-label { color: #6c757d; flex: 0 0 2.5rem; font-size: .8rem; font-weight: 700; }
+.filter-chips { display: flex; flex-wrap: wrap; gap: .5rem; }
 .chip { background: #fff; border: 1px solid #ced4da; border-radius: 999px; color: #495057; padding: .4rem .75rem; text-decoration: none; }
 .chip:hover, .chip.active { background: #0d6efd; border-color: #0d6efd; color: #fff; }
+.clear-filter { align-self: center; color: #6c757d; font-size: .8rem; margin-left: .15rem; }
 .capacity { border-top: 1px solid #e9ecef; display: flex; justify-content: space-between; margin: 1.25rem 0; padding-top: 1rem; }
 .table-wrap { overflow-x: auto; padding: 0; }
 table { border-collapse: collapse; width: 100%; }
 th, td { border-bottom: 1px solid #dee2e6; padding: .75rem; text-align: left; white-space: nowrap; }
 th { background: #f8f9fa; }
-@media (max-width: 600px) { .page-heading { display: grid; gap: 1rem; } .user-box { text-align: left; } .actions { justify-content: flex-start; } }
+.sort-header { align-items: center; color: inherit; display: inline-flex; gap: .25rem; text-decoration: none; }
+.sort-header:hover { color: #0d6efd; }
+.sort-header span { color: #0d6efd; }
+@media (max-width: 760px) { .site-header nav { align-items: flex-start; flex-direction: column; padding-block: .8rem; } .gnb-user { align-items: flex-start; flex-wrap: wrap; gap: .6rem 1rem; } .gnb-identity { flex-wrap: wrap; } .page-heading { display: grid; gap: 1rem; } .user-box { text-align: left; } .actions { justify-content: flex-start; } }
 .form-card { max-width: 760px; }
 .form-grid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
 .checkbox-row { display: flex; flex-wrap: wrap; gap: 1rem; }
@@ -80,3 +103,19 @@ th { background: #f8f9fa; }
 .tooltip-panel li { border-top: 1px solid rgba(255,255,255,.2); padding: .45rem 0; }
 .tooltip-panel small { color: #ced4da; display: block; margin-top: .15rem; }
 .tooltip-panel p { margin: .5rem 0 0; }
+.font-preview-grid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+.font-preview-card { display: grid; gap: 1rem; }
+.font-preview-heading { align-items: flex-start; display: flex; gap: .75rem; }
+.font-preview-heading h2, .font-preview-heading p { margin: 0; }
+.font-preview-heading p { color: #6c757d; font-size: .85rem; margin-top: .2rem; }
+.font-option-label { align-items: center; background: #212529; border-radius: 50%; color: #fff; display: inline-flex; flex: 0 0 2rem; font-weight: 700; height: 2rem; justify-content: center; }
+.font-sample-ui { border: 1px solid #e9ecef; border-radius: .5rem; padding: 1rem; }
+.font-sample-ui h3 { margin: 0; }
+.font-sample-ui button { margin-top: .75rem; width: 100%; }
+.font-sample-chips { display: flex; flex-wrap: wrap; gap: .4rem; }
+.font-sample-table { background: #f8f9fa; border-radius: .375rem; display: grid; font-size: .8rem; gap: .35rem; padding: .75rem; }
+.font-preview-footnote { color: #6c757d; font-size: .85rem; margin: 1.25rem 0 2rem; text-align: center; }
+.font-noto { font-family: "Noto Sans KR", sans-serif; }
+.font-ibm { font-family: "IBM Plex Sans KR", sans-serif; }
+.font-gowun { font-family: "Gowun Dodum", sans-serif; }
+.font-nanum { font-family: "Nanum Gothic", sans-serif; }

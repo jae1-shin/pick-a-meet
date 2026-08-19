@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}글꼴 비교 · Pick a Meet{% endblock %}
+{% block head %}
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;600;700&family=Nanum+Gothic:wght@400;700&family=Noto+Sans+KR:wght@400;600;700&display=swap" rel="stylesheet">
+{% endblock %}
+{% block content %}
+  <section class="page-heading"><div><p class="eyebrow">TEMPORARY STYLE LAB</p><h1>Pick a Meet 글꼴 비교</h1><p class="muted">같은 문구와 UI를 네 가지 한글 글꼴로 비교해보세요.</p></div><a href="/meetings">모임 화면으로</a></section>
+  <div class="font-preview-grid">
+    {% for option in font_options %}
+      <article class="font-preview-card card {{ option.class_name }}">
+        <div class="font-preview-heading"><span class="font-option-label">{{ option.key }}</span><div><h2>{{ option.name }}</h2><p>{{ option.note }}</p></div></div>
+        <div class="font-sample-ui">
+          <p class="eyebrow">2026.09.05 (토) 19:00</p>
+          <h3>광교 모임 라운지</h3>
+          <dl class="meeting-facts"><div><dt>동네</dt><dd>광교</dd></div><div><dt>대표 메뉴</dt><dd>파스타와 피자</dd></div></dl>
+          <div class="host-message"><span>호스트의 한마디</span><blockquote>“편하게 이야기 나누며 좋은 저녁 보내요!”</blockquote></div>
+          <div class="font-sample-chips"><span class="chip active">광교</span><span class="chip">강남</span><span class="chip">성수·서울숲</span></div>
+          <button type="button">신청하기</button>
+        </div>
+        <div class="font-sample-table"><strong>관리 화면</strong><span>이름　ID　파트　모듈　상태 ↑</span></div>
+      </article>
+    {% endfor %}
+  </div>
+  <p class="font-preview-footnote">현재 C안 Gowun Dodum을 전체 서비스에 적용했으며 글꼴 파일과 OFL 라이선스를 프로젝트에 내장했습니다.</p>
+{% endblock %}

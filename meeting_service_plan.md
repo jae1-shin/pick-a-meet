@@ -896,10 +896,10 @@ Bootstrap Navbar + Container + Table 중심으로 구성한다.
 
 # 28. Host 화면
 
-Host 화면을 유지할 경우 다음 기능만 제공한다.
+Host 화면은 다음 기능을 제공한다.
 
 ```text
-/host/meetings
+/host
 ```
 
 Host가 본인이 맡은 모임에 대해:
@@ -908,21 +908,11 @@ Host가 본인이 맡은 모임에 대해:
 - 신청 인원 확인
 - 잔여 인원 확인
 - 신청자 명단 확인
+- 본인 모임의 장소, 링크, 동네, 대표 메뉴, 한마디, 시작 일시, 정원 수정
 
 을 할 수 있다.
 
-모임 편집 기능은 최종 정책에 따라:
-
-```text
-A안: Host도 본인 모임 수정 가능
-B안: 수정은 Admin만 가능
-```
-
-중 하나를 선택할 수 있다.
-
-**현재 단순화 우선 기본안은 모임 편집을 `/admin`에 집중시키는 것이다.**
-
-Host에게 직접 편집이 꼭 필요한 경우에만 `/host/.../edit`를 추가한다.
+모임 상태와 Host 배정은 Admin만 수정한다. Host가 정원을 수정할 때 현재 신청 인원보다 작게 줄일 수 없다.
 
 ---
 
@@ -941,7 +931,6 @@ neighborhood
 representative_menu
 host_message TEXT
 start_at
-end_at
 
 capacity INTEGER
 status
@@ -1529,13 +1518,8 @@ POST /api/images
 ## Host
 
 ```text
-GET /host/meetings
+GET /host
 GET /host/meetings/{meeting_id}/registrations
-```
-
-Host 편집 기능이 필요할 경우:
-
-```text
 GET  /host/meetings/{meeting_id}/edit
 POST /host/meetings/{meeting_id}/edit
 ```

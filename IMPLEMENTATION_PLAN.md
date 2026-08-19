@@ -31,7 +31,7 @@ pyproject.toml docker-compose.yml Dockerfile .env.example README.md
 - `part(id, name UNIQUE)`, `module(id, part_id FK, name, UNIQUE(part_id,name))`.
 - `member(id, login_id UNIQUE, employee_no UNIQUE, name, module_id FK, host_enabled, apply_enabled, admin_enabled, active, last_login_ip, last_login_at, timestamps)`.
 - `login_history(id, member_id FK, login_at, login_ip, ip_changed, login_result CHECK)`.
-- `meeting(id, place_name, place_url, neighborhood, representative_menu, host_message TEXT, start_at, end_at, capacity CHECK > 0, status CHECK, timestamps)`와 `CHECK(end_at > start_at)`.
+- `meeting(id, place_name, place_url, neighborhood, representative_menu, host_message TEXT, start_at, capacity CHECK > 0, status CHECK, timestamps)`.
 - `meeting_host(meeting_id UNIQUE/FK, member_id FK)`.
 - `registration(id, member_id UNIQUE/FK, meeting_id FK, registered_at)`.
 - `registration_history(id, member_id FK, meeting_id FK, action CHECK, created_at)`.
@@ -52,7 +52,7 @@ pyproject.toml docker-compose.yml Dockerfile .env.example README.md
 
 ## 7. Meeting
 
-- 생성/수정은 Admin에 집중한다. Host는 본인 모임 및 신청자 목록을 읽기만 한다.
+- 생성과 상태·Host 배정은 Admin이 담당한다. Host는 본인 모임의 정보·일시·정원을 수정하고 신청자 목록을 조회한다.
 - 모임 콘텐츠는 구조화된 일반 Text 필드로 관리하며 Rich Text와 이미지 업로드는 현재 범위에서 제외한다.
 
 ## 8. Registration

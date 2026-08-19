@@ -8,15 +8,14 @@ GitHub repository 이름은 `pick-a-meet`을 사용합니다.
 
 ## 현재 구현 상태
 
-현재는 Phase 1을 시작한 상태입니다.
-
-- 완료: 프로젝트 골격, 환경변수 설정, 비동기 PostgreSQL 연결, 서명 Cookie Session, Jinja2 기본 화면
-- 완료: 핵심 DB 모델과 최초 Alembic migration, 로그인/IP 변경 확인, 역할별 확인 화면, 개발용 seed
+- 완료: 프로젝트 골격, 환경변수 설정, 비동기 PostgreSQL 연결, 서명 Cookie Session, Jinja2 화면
+- 완료: DB 모델과 Alembic migration, 로그인/IP 변경 확인, Admin/Host 권한, 개발용 seed
+- 완료: 모임 전체·동네별·일시별 보기, 동네/날짜 복수 필터, 신청자 tooltip, 신청·취소
+- 완료: Host 본인 모임 조회·편집·신청자 명단, Admin 사용자·모임 CRUD와 테이블 헤더 정렬
+- 완료: Gowun Dodum 글꼴과 SIL OFL 라이선스를 `app/static/fonts/`에 내장
 - 완료: `/health/live`, `/health/ready`, PostgreSQL Docker Compose, Python 테스트 환경
 - 진행 예정: HTMX polling, 동시성 부하 테스트, K8s manifest
 - 아직 Bootstrap/HTMX 정적 파일은 포함하지 않았습니다. 최종 사내 반입 전에 버전을 고정해 `app/static/vendor/`에 저장해야 합니다.
-
-현재 초기 화면은 Phase 1 확인용이며 완성된 사용자 화면이 아닙니다.
 
 ## 현재 개발 서버 접속
 
@@ -24,6 +23,7 @@ GitHub repository 이름은 `pick-a-meet`을 사용합니다.
 
 - 권장: <http://localhost:8000>
 - WSL 직접 주소가 필요한 경우 `hostname -I`로 확인한 IP의 8000번 port
+- 임시 글꼴 비교: <http://localhost:8000/style/font-preview>
 
 현재 개발용 계정은 다음과 같습니다. 실제 사내 반입 전에 삭제하거나 정식 사용자 데이터로 교체해야 합니다.
 
@@ -57,6 +57,7 @@ Seed에는 서로 다른 시간·장소·정원을 가진 OPEN 모임 5개와 �
 - 실제 OPEN 모임의 Host는 다른 모임에도 신청할 수 없습니다. `host_enabled` 권한만 가진 사용자는 신청할 수 있습니다.
 - Admin도 신청할 때는 일반 사용자와 같은 정원·Host·1인 1모임 규칙을 적용받습니다.
 - 일반 사용자는 신청자의 이름·ID·파트·모듈을 볼 수 있지만 Host 정보와 신청자 사번은 볼 수 없습니다.
+- Host는 본인이 맡은 모임의 장소·동네·메뉴·한마디·시작 일시·정원을 수정할 수 있습니다. 상태와 Host 배정은 Admin만 변경합니다.
 - 신청 시 PostgreSQL row lock과 DB constraint를 함께 사용해 마지막 한 자리 경합과 동일 사용자의 동시 신청을 막습니다.
 
 ## 디렉터리
