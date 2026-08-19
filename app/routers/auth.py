@@ -124,6 +124,7 @@ async def login(
     await db.commit()
     request.session.clear()
     request.session["member_id"] = member.member_id
+    request.session["session_kind"] = "login"
     csrf_token(request)
     return RedirectResponse(post_login_destination(member), status_code=303)
 
@@ -155,6 +156,7 @@ async def confirm_ip(
     await db.commit()
     request.session.clear()
     request.session["member_id"] = member.member_id
+    request.session["session_kind"] = "login"
     csrf_token(request)
     return RedirectResponse(post_login_destination(member), status_code=303)
 
@@ -164,3 +166,27 @@ async def logout(request: Request, csrf: str = Form(...)) -> RedirectResponse:
     verify_csrf(request, csrf)
     request.session.clear()
     return RedirectResponse("/login", status_code=303)
+
+
+@router.post("/impersonation/return")
+async def return_from_impersonation(
+    request: Request,
+    csrf: str = Form(...),
+    db: AsyncSession = Depends(get_db),
+) -> RedirectResponse:
+    verify_csrf(request, csrf)
+    if request.session.get("session_kind") != "impersonation":
+        return RedirectResponse("/meetings", status_code=303)
+    admin_id = request.session.get("impersonator_member_id")
+    admin = await db.get(Member, admin_id) if admin_id else None
+    if admin is None or not admin.active or not admin.admin_enabled:
+        request.session.clear()
+        return RedirectResponse("/login", status_code=303)
+
+    token = csrf_token(request)
+    request.session.clear()
+    request.session["member_id"] = admin.member_id
+    request.session["session_kind"] = "login"
+    request.session["admin_console_verified"] = True
+    request.session["csrf_token"] = token
+    return RedirectResponse("/admin", status_code=303)

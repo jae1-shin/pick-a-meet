@@ -48,6 +48,7 @@ from app.services.registration_window import (
     update_registration_window,
 )
 from app.services.session_service import csrf_token, verify_csrf
+from app.routers.auth import post_login_destination
 
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -344,6 +345,32 @@ async def admin_member_new_page(
         name="admin/member_form.html",
         context=member_form_context(request, admin),
     )
+
+
+@router.post("/members/{member_id}/impersonate")
+async def admin_impersonate_member(
+    member_id: int,
+    request: Request,
+    csrf: str = Form(...),
+    db: AsyncSession = Depends(get_db),
+) -> RedirectResponse:
+    verify_csrf(request, csrf)
+    admin = await require_admin_console(request, db)
+    if request.session.get("session_kind") == "impersonation":
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT)
+    target = await db.get(Member, member_id)
+    if target is None or not target.active:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+    if target.member_id == admin.member_id:
+        return RedirectResponse("/admin", status_code=303)
+
+    token = csrf_token(request)
+    request.session.clear()
+    request.session["member_id"] = target.member_id
+    request.session["session_kind"] = "impersonation"
+    request.session["impersonator_member_id"] = admin.member_id
+    request.session["csrf_token"] = token
+    return RedirectResponse(post_login_destination(target), status_code=303)
 
 
 @router.post("/members/new", response_class=HTMLResponse)

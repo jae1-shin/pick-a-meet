@@ -47,6 +47,7 @@ pyproject.toml docker-compose.yml Dockerfile .env.example README.md
 ## 6. Authorization
 
 - 일반 route는 활성 로그인 사용자, `/admin/**`는 최신 `admin_enabled`, `/host/**`는 대상 모임의 실제 Host 관계를 검사한다.
+- Admin 사용자 전환은 Admin console 재인증과 CSRF를 통과한 POST로만 시작한다. 세션에 `login`/`impersonation` 종류와 원래 Admin ID를 구분해 저장하고, 복귀 시 원래 계정의 활성·Admin 권한을 다시 검사한다.
 - 신청자 이름·ID·파트·모듈은 공개하고 신청자 사번은 포함하지 않는다. Host 이름·ID·파트·모듈은 Admin의 전역 공개 설정이 켜진 경우에만 일반 모임 카드에 포함한다.
 - 상태 변경 POST에는 세션 사용자만 사용하고 CSRF 토큰을 검증한다.
 
