@@ -2,10 +2,11 @@ import asyncio
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import select
+from sqlalchemy import delete
 
-from app.database import SessionFactory
+from app.database import SessionFactory, engine
 from app.models import (
+    LoginHistory,
     Meeting,
     MeetingHost,
     Member,
@@ -16,243 +17,247 @@ from app.models import (
 )
 
 
-LEADER_PROFILES = (
-    ("이리더", "플랫폼파트", "서비스개발모듈"),
-    ("정리더", "데이터파트", "데이터분석모듈"),
-    ("최리더", "사업파트", "서비스기획모듈"),
-    ("한리더", "디자인파트", "UX모듈"),
-    ("오리더", "인프라파트", "클라우드모듈"),
-)
-
-MEMBER_PROFILES = (
-    ("박일반", "플랫폼파트", "서비스개발모듈"),
-    ("김하늘", "플랫폼파트", "프론트엔드모듈"),
-    ("이바다", "데이터파트", "데이터분석모듈"),
-    ("정다온", "데이터파트", "AI모듈"),
-    ("최가람", "사업파트", "서비스기획모듈"),
-    ("한누리", "사업파트", "마케팅모듈"),
-    ("오서윤", "디자인파트", "UX모듈"),
-    ("윤지호", "디자인파트", "브랜드모듈"),
-    ("장유진", "인프라파트", "클라우드모듈"),
-    ("임시우", "인프라파트", "보안모듈"),
-    ("송민재", "경영지원파트", "서비스운영모듈"),
-)
-
-DEMO_USERS = (
+PART_SPECS = (
     {
-        "login_id": "admin01",
-        "employee_no": "1",
-        "name": "김관리",
-        "part": "경영지원파트",
-        "module": "서비스운영모듈",
-        "admin_enabled": True,
-        "host_enabled": False,
+        "name": "플랫폼파트",
+        "modules": ("서비스개발모듈", "프론트엔드모듈", "플랫폼운영모듈"),
+        "leader_count": 4,
+        "member_numbers": range(19, 47),
     },
-) + tuple(
     {
-        "login_id": f"leader{index:02d}",
-        "employee_no": str(index + 1),
-        "name": name,
-        "part": part,
-        "module": module,
-        "admin_enabled": index == 1,
-        "host_enabled": True,
+        "name": "데이터파트",
+        "modules": ("데이터분석모듈", "AI모듈", "데이터플랫폼모듈"),
+        "leader_count": 4,
+        "member_numbers": range(47, 73),
+    },
+    {
+        "name": "사업파트",
+        "modules": ("서비스기획모듈", "마케팅모듈", "사업운영모듈"),
+        "leader_count": 4,
+        "member_numbers": range(73, 97),
+    },
+    {
+        "name": "디자인파트",
+        "modules": ("UX모듈", "브랜드모듈"),
+        "leader_count": 3,
+        "member_numbers": range(97, 109),
+    },
+    {
+        "name": "인프라파트",
+        "modules": ("클라우드모듈", "보안모듈"),
+        "leader_count": 3,
+        "member_numbers": range(109, 121),
+    },
+)
+
+
+def build_demo_users() -> tuple[dict[str, object], ...]:
+    users: list[dict[str, object]] = []
+    leader_number = 1
+    for part in PART_SPECS:
+        for local_index in range(part["leader_count"]):
+            number = leader_number
+            users.append(
+                {
+                    "login_id": f"leader{number:02d}",
+                    "employee_no": str(number),
+                    "name": f"{part['name'].removesuffix('파트')}리더{local_index + 1:02d}",
+                    "part": part["name"],
+                    "module": part["modules"][local_index % len(part["modules"])],
+                    "admin_enabled": number == 1,
+                    "host_enabled": True,
+                    "active": True,
+                }
+            )
+            leader_number += 1
+
+    for part in PART_SPECS:
+        for local_index, number in enumerate(part["member_numbers"]):
+            users.append(
+                {
+                    "login_id": f"member{number:02d}",
+                    "employee_no": str(number),
+                    "name": f"{part['name'].removesuffix('파트')}멤버{number:03d}",
+                    "part": part["name"],
+                    "module": part["modules"][local_index % len(part["modules"])],
+                    "admin_enabled": number in (19, 20),
+                    "host_enabled": False,
+                    "active": True,
+                }
+            )
+    return tuple(users)
+
+
+DEMO_USERS = build_demo_users()
+
+
+MEETING_THEMES = (
+    ("광교 파스타 테이블", "광교", "파스타와 피자", "편하게 이야기 나누며 좋은 저녁 보내요!"),
+    ("서울숲 브런치 테이블", "성수·서울숲", "브런치 플래터", "주말 낮에 가볍게 만나 맛있는 브런치 먹어요."),
+    ("강남 보드게임 카페", "강남", "보드게임과 스낵", "룰을 몰라도 괜찮아요. 차근차근 알려드릴게요!"),
+    ("광교호수공원 러닝", "광교", "러닝 후 이온음료", "기록보다 함께 완주하는 게 목표입니다."),
+    ("수원 쿠킹 스튜디오", "수원역·행궁동", "생면 파스타", "요리를 처음 해보는 분도 환영합니다!"),
+    ("판교 커피 라운지", "판교", "커피와 디저트", "일 이야기 없이 편하게 커피 한잔해요."),
+    ("성수 베이커리 모임", "성수·서울숲", "빵과 커피", "새로 나온 빵을 같이 골라봐요."),
+    ("강남 이자카야 저녁", "강남", "꼬치와 나베", "퇴근 후 가볍게 이야기 나눠요."),
+    ("행궁동 산책 모임", "수원역·행궁동", "만두와 쫄면", "천천히 걷고 맛있는 것도 먹어요."),
+    ("판교 점심 탐방", "판교", "솥밥", "점심시간을 알차게 보내봅시다."),
+    ("광교 영화 이야기", "광교", "타코와 음료", "최근 본 영화를 편하게 추천해주세요."),
+    ("서울숲 피크닉", "성수·서울숲", "샌드위치", "돗자리는 제가 준비할게요."),
+    ("강남 방탈출", "강남", "방탈출 후 치킨", "초보도 즐길 수 있는 난이도로 골랐어요."),
+    ("수원 사진 산책", "수원역·행궁동", "행궁동 디저트", "휴대폰 카메라만 있어도 충분합니다."),
+    ("판교 독서 대화", "판교", "샐러드와 커피", "책을 다 읽지 못했어도 환영해요."),
+    ("광교 야경 산책", "광교", "떡볶이", "가볍게 걷고 야식도 함께해요."),
+    ("성수 전시 관람", "성수·서울숲", "수제버거", "전시를 보고 각자의 감상을 나눠요."),
+    ("강남 공연 모임", "강남", "우동과 튀김", "좋아하는 음악 이야기도 함께 나눠요."),
+)
+
+
+def build_demo_meetings() -> tuple[dict[str, object], ...]:
+    days = (1, 3, 5, 8, 10, 12)
+    times = ((11, 30), (18, 30), (19, 30))
+    meetings: list[dict[str, object]] = []
+    for index, (place, neighborhood, menu, message) in enumerate(
+        MEETING_THEMES, start=1
+    ):
+        day = days[(index - 1) // 3]
+        hour, minute = times[(index - 1) % 3]
+        meetings.append(
+            {
+                "place_name": place,
+                "place_url": f"https://map.naver.com/p/search/{place}",
+                "neighborhood": neighborhood,
+                "representative_menu": menu,
+                "host_message": message,
+                "host_login_id": f"leader{index:02d}",
+                "start_at": (2026, 9, day, hour, minute),
+                "capacity": 8 + ((index - 1) % 3) * 2,
+                "status": "CLOSED" if index in (17, 18) else "OPEN",
+            }
+        )
+    return tuple(meetings)
+
+
+DEMO_MEETINGS = build_demo_meetings()
+
+
+def build_sample_assignments() -> tuple[tuple[str, str], ...]:
+    member_logins_by_part = {
+        part["name"]: [f"member{number:02d}" for number in part["member_numbers"]]
+        for part in PART_SPECS
     }
-    for index, (name, part, module) in enumerate(LEADER_PROFILES, start=1)
-) + tuple(
-    {
-        "login_id": f"member{index:02d}",
-        "employee_no": str(index + 6),
-        "name": name,
-        "part": part,
-        "module": module,
-        "admin_enabled": False,
-        "host_enabled": False,
-        "active": index != 6,
-    }
-    for index, (name, part, module) in enumerate(MEMBER_PROFILES, start=1)
-)
+    offsets = {part["name"]: 0 for part in PART_SPECS}
+    overflow_parts = [part["name"] for part in PART_SPECS[:3]]
+    assignments: list[tuple[str, str]] = []
 
-DEMO_MEETINGS = (
-    {
-        "place_name": "광교 모임 라운지",
-        "place_url": "https://map.naver.com/p/search/광교중앙역",
-        "neighborhood": "광교",
-        "representative_menu": "파스타와 피자",
-        "host_message": "편하게 이야기 나누며 좋은 저녁 보내요!",
-        "host_login_id": "leader01",
-        "start_at": (2026, 9, 5, 19, 0),
-        "description": "가볍게 저녁을 먹으며 서로의 관심사를 나누는 모임입니다.",
-        "capacity": 10,
-    },
-    {
-        "place_name": "서울숲 브런치 테이블",
-        "place_url": "https://map.naver.com/p/search/서울숲",
-        "neighborhood": "성수·서울숲",
-        "representative_menu": "브런치 플래터",
-        "host_message": "주말 낮에 가볍게 만나 맛있는 브런치 먹어요.",
-        "host_login_id": "leader02",
-        "start_at": (2026, 9, 12, 11, 30),
-        "description": "서울숲 근처에서 브런치를 즐기는 소규모 모임입니다.",
-        "capacity": 4,
-    },
-    {
-        "place_name": "강남 보드게임 카페",
-        "place_url": "https://map.naver.com/p/search/강남역 보드게임카페",
-        "neighborhood": "강남",
-        "representative_menu": "보드게임과 스낵",
-        "host_message": "룰을 몰라도 괜찮아요. 제가 차근차근 알려드릴게요!",
-        "host_login_id": "leader03",
-        "start_at": (2026, 9, 18, 18, 30),
-        "description": "초보자도 편하게 참여할 수 있는 보드게임 저녁입니다.",
-        "capacity": 6,
-    },
-    {
-        "place_name": "광교호수공원 러닝",
-        "place_url": "https://map.naver.com/p/search/광교호수공원",
-        "neighborhood": "광교",
-        "representative_menu": "러닝 후 이온음료",
-        "host_message": "기록보다 함께 완주하는 게 목표입니다.",
-        "host_login_id": "leader04",
-        "start_at": (2026, 9, 23, 19, 30),
-        "description": "천천히 5km를 달리고 산책으로 마무리합니다.",
-        "capacity": 12,
-    },
-    {
-        "place_name": "수원 쿠킹 스튜디오",
-        "place_url": "https://map.naver.com/p/search/수원 쿠킹스튜디오",
-        "neighborhood": "수원역·행궁동",
-        "representative_menu": "생면 파스타",
-        "host_message": "요리를 처음 해보는 분도 환영합니다!",
-        "host_login_id": "leader05",
-        "start_at": (2026, 10, 2, 18, 30),
-        "description": "함께 파스타를 만들고 저녁을 나누는 체험 모임입니다.",
-        "capacity": 5,
-    },
-)
+    for meeting_index, meeting in enumerate(DEMO_MEETINGS[:10]):
+        for part in PART_SPECS:
+            part_name = part["name"]
+            member_login = member_logins_by_part[part_name][offsets[part_name]]
+            offsets[part_name] += 1
+            assignments.append((member_login, meeting["place_name"]))
+        if meeting_index < 9:
+            part_name = overflow_parts[meeting_index % len(overflow_parts)]
+            member_login = member_logins_by_part[part_name][offsets[part_name]]
+            offsets[part_name] += 1
+            assignments.append((member_login, meeting["place_name"]))
+    return tuple(assignments)
 
 
-async def get_or_create_module(session, part_name: str, module_name: str) -> Module:
-    part = await session.scalar(select(Part).where(Part.name == part_name))
-    if part is None:
-        part = Part(name=part_name)
-        session.add(part)
-        await session.flush()
+SAMPLE_ASSIGNMENTS = build_sample_assignments()
 
-    module = await session.scalar(
-        select(Module).where(Module.part_id == part.part_id, Module.name == module_name)
-    )
-    if module is None:
-        module = Module(part_id=part.part_id, name=module_name)
-        session.add(module)
-        await session.flush()
-    return module
+
+async def clear_demo_data(session) -> None:
+    for model in (
+        RegistrationHistory,
+        Registration,
+        MeetingHost,
+        LoginHistory,
+        Meeting,
+        Member,
+        Module,
+        Part,
+    ):
+        await session.execute(delete(model))
 
 
 async def seed() -> None:
-    async with SessionFactory() as session:
+    async with SessionFactory() as session, session.begin():
+        await clear_demo_data(session)
+
+        modules: dict[tuple[str, str], Module] = {}
+        for spec in PART_SPECS:
+            part = Part(name=spec["name"])
+            session.add(part)
+            await session.flush()
+            for module_name in spec["modules"]:
+                module = Module(part_id=part.part_id, name=module_name)
+                session.add(module)
+                await session.flush()
+                modules[(spec["name"], module_name)] = module
+
         users: dict[str, Member] = {}
         for item in DEMO_USERS:
-            module = await get_or_create_module(session, item["part"], item["module"])
-            member = await session.scalar(
-                select(Member).where(Member.login_id == item["login_id"])
+            member = Member(
+                login_id=item["login_id"],
+                employee_no=item["employee_no"],
+                name=item["name"],
+                module_id=modules[(item["part"], item["module"])].module_id,
+                admin_enabled=item["admin_enabled"],
+                host_enabled=item["host_enabled"],
+                apply_enabled=not item["host_enabled"],
+                active=item["active"],
             )
-            if member is None:
-                member = Member(
-                    login_id=item["login_id"],
-                    employee_no=item["employee_no"],
-                    name=item["name"],
-                    module_id=module.module_id,
-                    admin_enabled=item["admin_enabled"],
-                    host_enabled=item["host_enabled"],
-                    apply_enabled=not item["host_enabled"],
-                    active=item.get("active", True),
-                )
-                session.add(member)
-                await session.flush()
-            else:
-                member.employee_no = item["employee_no"]
-                member.name = item["name"]
-                member.module_id = module.module_id
-                member.admin_enabled = item["admin_enabled"]
-                member.host_enabled = item["host_enabled"]
-                member.apply_enabled = not item["host_enabled"]
-                member.active = item.get("active", True)
+            session.add(member)
+            await session.flush()
             users[item["login_id"]] = member
 
         seoul = ZoneInfo("Asia/Seoul")
         meetings: dict[str, Meeting] = {}
         for item in DEMO_MEETINGS:
-            meeting = await session.scalar(
-                select(Meeting).where(Meeting.place_name == item["place_name"])
+            meeting = Meeting(
+                place_name=item["place_name"],
+                place_url=item["place_url"],
+                neighborhood=item["neighborhood"],
+                representative_menu=item["representative_menu"],
+                host_message=item["host_message"],
+                start_at=datetime(*item["start_at"], tzinfo=seoul),
+                description_content="",
+                capacity=item["capacity"],
+                status=item["status"],
             )
-            if meeting is None:
-                meeting = Meeting(
-                    place_name=item["place_name"],
-                    place_url=item["place_url"],
-                    neighborhood=item["neighborhood"],
-                    representative_menu=item["representative_menu"],
-                    host_message=item["host_message"],
-                    start_at=datetime(*item["start_at"], tzinfo=seoul),
-                    description_content="",
-                    capacity=item["capacity"],
-                    status="OPEN",
-                )
-                session.add(meeting)
-                await session.flush()
-            else:
-                meeting.place_url = item["place_url"]
-                meeting.neighborhood = item["neighborhood"]
-                meeting.representative_menu = item["representative_menu"]
-                meeting.host_message = item["host_message"]
-                meeting.description_content = ""
-                meeting.capacity = item["capacity"]
+            session.add(meeting)
+            await session.flush()
             meetings[item["place_name"]] = meeting
-            leader = users[item["host_login_id"]]
-            host = await session.scalar(
-                select(MeetingHost).where(MeetingHost.meeting_id == meeting.meeting_id)
-            )
-            if host is None:
-                session.add(
-                    MeetingHost(
-                        meeting_id=meeting.meeting_id,
-                        member_id=leader.member_id,
-                    )
+            session.add(
+                MeetingHost(
+                    meeting_id=meeting.meeting_id,
+                    member_id=users[item["host_login_id"]].member_id,
                 )
-            else:
-                host.member_id = leader.member_id
+            )
 
-        sample_assignments = (
-            ("member02", "광교 모임 라운지"),
-            ("member03", "광교 모임 라운지"),
-            ("member04", "서울숲 브런치 테이블"),
-            ("member05", "강남 보드게임 카페"),
-            ("member08", "광교호수공원 러닝"),
-            ("member07", "수원 쿠킹 스튜디오"),
-        )
-        for login_id, place_name in sample_assignments:
+        for login_id, place_name in SAMPLE_ASSIGNMENTS:
             member = users[login_id]
-            existing = await session.scalar(
-                select(Registration).where(Registration.member_id == member.member_id)
+            meeting = meetings[place_name]
+            session.add(
+                Registration(
+                    member_id=member.member_id,
+                    meeting_id=meeting.meeting_id,
+                )
             )
-            if existing is None:
-                meeting = meetings[place_name]
-                session.add(
-                    Registration(
-                        member_id=member.member_id,
-                        meeting_id=meeting.meeting_id,
-                    )
+            session.add(
+                RegistrationHistory(
+                    member_id=member.member_id,
+                    meeting_id=meeting.meeting_id,
+                    action="APPLY",
                 )
-                session.add(
-                    RegistrationHistory(
-                        member_id=member.member_id,
-                        meeting_id=meeting.meeting_id,
-                        action="APPLY",
-                    )
-                )
+            )
 
-        await session.commit()
-        print("Demo data ready: 2 admins (including leader01), 5 leaders, 11 members, 5 meetings")
+    await engine.dispose()
+    print(
+        "Demo data ready: 120 users, 18 leaders, 3 admins, "
+        "18 meetings, 59 registrations"
+    )
 
 
 if __name__ == "__main__":
