@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block content %}
+  <section class="card">
+    <p class="eyebrow">개발 환경</p>
+    <h1>사내 모임 신청 서비스</h1>
+    <p>Phase 1 골격이 실행 중입니다. 다음 단계에서 로그인과 데이터 모델을 연결합니다.</p>
+    <dl class="status-list">
+      <div><dt>화면 갱신 주기</dt><dd>{{ polling_interval }}초</dd></div>
+      <div><dt>애플리케이션</dt><dd><span class="badge">정상</span></dd></div>
+    </dl>
+  </section>
+{% endblock %}

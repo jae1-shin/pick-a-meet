@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+{% block title %}Admin · Pick a Meet{% endblock %}
+{% block content %}
+  <div class="page-heading"><div><p class="eyebrow">ADMIN</p><h1>사용자 관리</h1></div><a href="/meetings">일반 화면</a></div>
+  <div class="table-wrap card"><table><thead><tr><th>이름</th><th>ID</th><th>사번</th><th>파트</th><th>모듈</th><th>신청</th><th>Host</th><th>Admin</th></tr></thead><tbody>
+    {% for item in members %}<tr><td>{{ item.name }}</td><td>{{ item.login_id }}</td><td>{{ item.employee_no }}</td><td>{{ item.module.part.name }}</td><td>{{ item.module.name }}</td><td>{{ 'Y' if item.apply_enabled else 'N' }}</td><td>{{ 'Y' if item.host_enabled else 'N' }}</td><td>{{ 'Y' if item.admin_enabled else 'N' }}</td></tr>{% endfor %}
+  </tbody></table></div>
+{% endblock %}

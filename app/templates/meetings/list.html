@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block content %}
+  <section class="page-heading">
+    <div><p class="eyebrow">PICK A MEET</p><h1>모임 신청</h1></div>
+    <div class="user-box">
+      <strong>{{ member.name }}</strong>
+      <span>{{ member.module.part.name }} · {{ member.module.name }}</span>
+      <div class="actions">
+        {% if member.admin_enabled %}<a href="/admin">Admin</a>{% endif %}
+        {% if member.host_enabled %}<a href="/host">Host</a>{% endif %}
+        <form method="post" action="/logout"><input type="hidden" name="csrf" value="{{ csrf_token }}"><button class="link-button">로그아웃</button></form>
+      </div>
+    </div>
+  </section>
+  <section>
+    <h2>모임 목록</h2>
+    <div class="meeting-grid">
+      {% for item in meetings %}
+        <article class="card meeting-card">
+          <p class="eyebrow">{{ item.meeting.start_at.strftime('%Y.%m.%d %H:%M') }} – {{ item.meeting.end_at.strftime('%H:%M') }}</p>
+          <h3>{{ item.meeting.place_name }}</h3>
+          <p>{{ item.meeting.description_content }}</p>
+          <div class="capacity"><span>신청 {{ item.applied_count }} / {{ item.meeting.capacity }}</span><strong>잔여 {{ item.remaining_count }}명</strong></div>
+          <button disabled>신청 기능 준비 중</button>
+        </article>
+      {% else %}<p class="muted">현재 공개된 모임이 없습니다.</p>{% endfor %}
+    </div>
+  </section>
+{% endblock %}

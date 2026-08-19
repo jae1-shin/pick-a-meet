@@ -1,0 +1,17 @@
+.env
+.venv/
+__pycache__/
+.pytest_cache/
+*.py[cod]
+*.egg-info/
+.coverage
+htmlcov/
+data/uploads/*
+!data/uploads/.gitkeep
+.idea/
+.vscode/
+*:Zone.Identifier
+.local/
+.tools/
+output/
+.playwright/
