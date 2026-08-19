@@ -10,10 +10,12 @@
   <body>
     <header class="site-header">
       <nav class="container" aria-label="주 메뉴">
-        <a class="brand" href="/">Pick a Meet</a>
+        <div class="gnb-left">
+          <a class="brand" href="/">Pick a Meet</a>
+          {% if member %}<div class="gnb-links"><a href="/meetings">모임</a>{% if member.host_enabled %}<a href="/host">Host</a>{% endif %}{% if member.admin_enabled %}<a href="/admin">Admin</a>{% endif %}</div>{% endif %}
+        </div>
         {% if member %}
           <div class="gnb-user">
-            <div class="gnb-links"><a href="/meetings">모임</a>{% if member.host_enabled %}<a href="/host">Host</a>{% endif %}{% if member.admin_enabled %}<a href="/admin">Admin</a>{% endif %}</div>
             <div class="gnb-identity" aria-label="로그인 사용자 정보"><strong>{{ member.name }}</strong><span>{{ member.login_id }}</span><span>{{ member.module.part.name }}</span><span>{{ member.module.name }}</span></div>
             <form method="post" action="/logout"><input type="hidden" name="csrf" value="{{ csrf_token }}"><button class="link-button" type="submit">로그아웃</button></form>
           </div>
