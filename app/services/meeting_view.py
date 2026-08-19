@@ -7,6 +7,11 @@ from sqlalchemy.orm import joinedload
 
 from app.models import Meeting, MeetingHost, Member, Module, Registration
 from app.services.part_registration_policy import part_registration_allowed
+from app.services.registration_policy import (
+    applicant_registration_denial_reason,
+    meeting_registration_denial_reason,
+)
+from app.services.registration_window import show_host_information
 
 
 KOREAN_WEEKDAYS = ("월", "화", "수", "목", "금", "토", "일")
@@ -36,6 +41,22 @@ async def load_applicants(
     for meeting_id, applicant in rows:
         applicants[meeting_id].append(applicant)
     return applicants
+
+
+async def load_meeting_hosts(
+    db: AsyncSession, meeting_ids: list[int]
+) -> dict[int, Member]:
+    if not meeting_ids:
+        return {}
+    rows = (
+        await db.execute(
+            select(MeetingHost.meeting_id, Member)
+            .join(Member, Member.member_id == MeetingHost.member_id)
+            .options(joinedload(Member.module).joinedload(Module.part))
+            .where(MeetingHost.meeting_id.in_(meeting_ids))
+        )
+    ).all()
+    return {meeting_id: host for meeting_id, host in rows}
 
 
 async def load_public_meeting_views(
@@ -77,6 +98,14 @@ async def load_public_meeting_views(
     applicants = await load_applicants(
         db, [meeting.meeting_id for meeting, _ in rows]
     )
+    host_information_visible = show_host_information()
+    hosts = (
+        await load_meeting_hosts(
+            db, [meeting.meeting_id for meeting, _ in rows]
+        )
+        if host_information_visible
+        else {}
+    )
     current_part_id = member.module.part_id
     active_part_member_count = await db.scalar(
         select(func.count())
@@ -103,6 +132,20 @@ async def load_public_meeting_views(
             active_part_member_count=active_part_member_count or 0,
             distribution_meeting_count=distribution_meeting_count,
         )
+        applicant_denial_reason = applicant_registration_denial_reason(
+            registration_open=registration_open,
+            member_active=member.active,
+            apply_enabled=member.apply_enabled,
+            is_open_host=is_open_host,
+            has_active_registration=active_registration is not None,
+        )
+        meeting_denial_reason = meeting_registration_denial_reason(
+            meeting_exists=True,
+            meeting_status=meeting.status,
+            applied_count=applied_count,
+            capacity=meeting.capacity,
+            part_allowed=part_allowed,
+        )
         views.append(
             {
                 "meeting": meeting,
@@ -115,17 +158,14 @@ async def load_public_meeting_views(
                     and active_registration.meeting_id == meeting.meeting_id
                 ),
                 "has_active_registration": active_registration is not None,
-                "can_apply": bool(
-                    meeting.status == "OPEN"
-                    and registration_open
-                    and member.apply_enabled
-                    and not is_open_host
-                    and active_registration is None
-                    and applied_count < meeting.capacity
-                    and part_allowed
+                "can_apply": (
+                    applicant_denial_reason is None
+                    and meeting_denial_reason is None
                 ),
                 "part_limit_reached": not part_allowed,
                 "applicants": applicants[meeting.meeting_id],
+                "host": hosts.get(meeting.meeting_id),
+                "show_host_information": host_information_visible,
             }
         )
     return views, is_open_host

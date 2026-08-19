@@ -47,7 +47,7 @@ pyproject.toml docker-compose.yml Dockerfile .env.example README.md
 ## 6. Authorization
 
 - 일반 route는 활성 로그인 사용자, `/admin/**`는 최신 `admin_enabled`, `/host/**`는 대상 모임의 실제 Host 관계를 검사한다.
-- 일반 응답에는 Host 정보와 신청자 사번을 포함하지 않는다. 신청자 이름·ID·파트·모듈은 공개한다.
+- 신청자 이름·ID·파트·모듈은 공개하고 신청자 사번은 포함하지 않는다. Host 이름·ID·파트·모듈은 Admin의 전역 공개 설정이 켜진 경우에만 일반 모임 카드에 포함한다.
 - 상태 변경 POST에는 세션 사용자만 사용하고 CSRF 토큰을 검증한다.
 
 ## 7. Meeting
@@ -67,13 +67,14 @@ pyproject.toml docker-compose.yml Dockerfile .env.example README.md
 ## 9. Frontend
 
 - Bootstrap Navbar/Container/Card/Table/Form/Alert 중심의 반응형 서버 렌더링을 사용한다.
-- Backend view model이 `can_apply`, `cannot_apply_reason`, count를 계산하고 템플릿은 표현만 담당한다.
+- Backend view model과 신청 transaction이 공통 registration policy를 사용해 `can_apply`, 거절 사유와 count를 계산하고 템플릿은 표현만 담당한다.
 - 신청/취소 버튼은 요청 중 비활성화하고 응답 fragment에 즉시 최신 상태와 메시지를 포함한다.
 
 ## 10. Polling
 
 - `/meetings/status-fragment`를 순수 JavaScript로 설정 주기마다 갱신한다.
-- 목록 전체가 아닌 내 신청과 카드 상태 영역만 반환한다. 신청/취소 응답도 동일 fragment를 반환해 즉시 동기화한다.
+- 동네·날짜와 개인별 신청 상태 필터를 유지하며, 상태 chip 클릭은 서버 최신 상태를 즉시 조회한다.
+- hover·focus·클릭 고정된 신청자 툴팁이 있으면 DOM 교체를 미뤄 polling으로 닫히지 않게 한다.
 
 ## 11. Image
 

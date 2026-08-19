@@ -12,7 +12,7 @@
   <div class="meeting-grid waiting-meeting-grid">
     {% for item in meeting_views %}
       <article class="card meeting-card">
-        {% set meeting = item.meeting %}{% set start_at = item.start_at %}{% set weekday = item.weekday %}{% set applied_count = item.applied_count %}{% set remaining_count = item.remaining_count %}{% set applicants = item.applicants %}{% include "meetings/_card_details.html" %}
+        {% set meeting = item.meeting %}{% set start_at = item.start_at %}{% set weekday = item.weekday %}{% set applied_count = item.applied_count %}{% set remaining_count = item.remaining_count %}{% set applicants = item.applicants %}{% set host = item.host %}{% set show_host_information = item.show_host_information %}{% include "meetings/_card_details.html" %}
       </article>
     {% else %}<p class="muted">현재 공개된 모임이 없습니다.</p>{% endfor %}
   </div>

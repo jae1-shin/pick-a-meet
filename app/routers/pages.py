@@ -126,20 +126,71 @@ async def _meeting_list_context(
     group_by: str = Query("all", pattern="^(all|neighborhood|date)$"),
     neighborhood_filters: list[str] | None = Query(None, alias="neighborhood"),
     date_filters: list[str] | None = Query(None, alias="date"),
+    availability_filter: str = Query(
+        "all", pattern="^(all|available|full|closed)$"
+    ),
 ) -> dict[str, object]:
     registration_open = registration_is_open()
     meeting_views, is_open_host = await load_public_meeting_views(
         db, member, registration_open=registration_open
     )
+    show_availability_filter = bool(
+        registration_open
+        and member.apply_enabled
+        and not is_open_host
+        and not any(item["has_active_registration"] for item in meeting_views)
+    )
+    if not show_availability_filter:
+        availability_filter = "all"
     filter_context = build_meeting_filter_context(
         meeting_views,
         neighborhood_filters=neighborhood_filters,
         date_filters=date_filters,
         base_path="/meetings",
-        base_params=[("group_by", group_by)],
+        base_params=[("group_by", group_by)]
+        + (
+            [("availability", availability_filter)]
+            if availability_filter != "all"
+            else []
+        ),
     )
     meeting_views = filter_context["meeting_views"]
-    preserved_filter_params = filter_context["preserved_filter_params"]
+    if availability_filter == "available":
+        meeting_views = [item for item in meeting_views if item["can_apply"]]
+    elif availability_filter == "full":
+        meeting_views = [
+            item
+            for item in meeting_views
+            if item["meeting"].status == "OPEN" and item["remaining_count"] == 0
+        ]
+    elif availability_filter == "closed":
+        meeting_views = [
+            item for item in meeting_views if item["meeting"].status == "CLOSED"
+        ]
+    spatial_filter_params = filter_context["preserved_filter_params"]
+    availability_options = [
+        {
+            "value": value,
+            "label": label,
+            "href": "/meetings?"
+            + urlencode(
+                [("group_by", group_by)]
+                + spatial_filter_params
+                + ([("availability", value)] if value != "all" else [])
+            ),
+        }
+        for value, label in (
+            ("all", "전체"),
+            ("available", "신청 가능"),
+            ("full", "마감"),
+            ("closed", "신청 종료"),
+        )
+    ]
+    preserved_filter_params = spatial_filter_params + (
+        [("availability", availability_filter)]
+        if availability_filter != "all"
+        else []
+    )
     view_hrefs = {
         view: "/meetings?" + urlencode(
             [("group_by", view)] + preserved_filter_params
@@ -188,6 +239,9 @@ async def _meeting_list_context(
         "csrf_token": csrf_token(request),
         "is_open_host": is_open_host,
         "registration_open": registration_open,
+        "availability_filter": availability_filter,
+        "show_availability_filter": show_availability_filter,
+        "availability_options": availability_options,
         "meeting_refresh_href": "/meetings/status-fragment?"
         + urlencode(refresh_params),
         "polling_interval_ms": settings.polling_interval_seconds * 1000,
@@ -200,6 +254,9 @@ async def meetings_page(
     group_by: str = Query("all", pattern="^(all|neighborhood|date)$"),
     neighborhood_filters: list[str] | None = Query(None, alias="neighborhood"),
     date_filters: list[str] | None = Query(None, alias="date"),
+    availability_filter: str = Query(
+        "all", alias="availability", pattern="^(all|available|full|closed)$"
+    ),
     db: AsyncSession = Depends(get_db),
 ) -> HTMLResponse:
     if not request.session.get("member_id"):
@@ -216,6 +273,7 @@ async def meetings_page(
         group_by=group_by,
         neighborhood_filters=neighborhood_filters,
         date_filters=date_filters,
+        availability_filter=availability_filter,
     )
     context["flash"] = request.session.pop("flash", None)
     return templates.TemplateResponse(
@@ -231,6 +289,9 @@ async def meetings_status_fragment(
     group_by: str = Query("all", pattern="^(all|neighborhood|date)$"),
     neighborhood_filters: list[str] | None = Query(None, alias="neighborhood"),
     date_filters: list[str] | None = Query(None, alias="date"),
+    availability_filter: str = Query(
+        "all", alias="availability", pattern="^(all|available|full|closed)$"
+    ),
     db: AsyncSession = Depends(get_db),
 ) -> HTMLResponse:
     if not request.session.get("member_id"):
@@ -247,6 +308,7 @@ async def meetings_status_fragment(
         group_by=group_by,
         neighborhood_filters=neighborhood_filters,
         date_filters=date_filters,
+        availability_filter=availability_filter,
     )
     response = templates.TemplateResponse(
         request=request,

@@ -3,6 +3,6 @@
 {% block content %}
   <div class="list-toolbar management-toolbar"><h2>내가 맡은 모임</h2></div>
   <div class="meeting-grid">
-    {% for item in meeting_views %}<article class="card meeting-card">{% set meeting = item.meeting %}{% set start_at = item.start_at %}{% set weekday = item.weekday %}{% set applied_count = item.applied_count %}{% set remaining_count = item.remaining_count %}{% set applicants = item.applicants %}{% include "meetings/_card_details.html" %}<div class="host-card-actions"><a class="secondary button" href="/host/meetings/{{ meeting.meeting_id }}/edit">정보 수정</a><a class="button" href="/host/meetings/{{ meeting.meeting_id }}/registrations">신청자 상세</a></div></article>{% endfor %}
+    {% for item in meeting_views %}<article class="card meeting-card">{% set meeting = item.meeting %}{% set start_at = item.start_at %}{% set weekday = item.weekday %}{% set applied_count = item.applied_count %}{% set remaining_count = item.remaining_count %}{% set applicants = item.applicants %}{% set host = item.host %}{% set show_host_information = item.show_host_information %}{% include "meetings/_card_details.html" %}<div class="host-card-actions"><a class="secondary button" href="/host/meetings/{{ meeting.meeting_id }}/edit">정보 수정</a><a class="button" href="/host/meetings/{{ meeting.meeting_id }}/registrations">신청자 상세</a></div></article>{% endfor %}
   </div>
 {% endblock %}

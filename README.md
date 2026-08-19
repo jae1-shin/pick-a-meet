@@ -12,10 +12,11 @@
 ### 일반 사용자
 
 - 전체·동네별·일시별 모임 보기
-- 동네와 날짜 복수 필터
+- 동네·날짜 복수 필터와 개인별 `신청 가능`·`마감`·`신청 종료` 상태 필터
 - 모임 신청·취소와 결과 toast
 - 신청·잔여 인원 및 신청자 이름·ID·파트·모듈 확인
-- 현재 필터와 스크롤을 유지한 5초 카드 현황 자동 갱신
+- 현재 필터와 스크롤을 유지한 5초 카드 현황 자동 갱신, 열어 둔 신청자 툴팁 보호
+- Admin 설정에 따른 Host 이름·ID·파트·모듈 확인
 - 신청 시작 전 모임 미리보기, 잔여 시간과 자동 입장
 
 ### Host
@@ -29,7 +30,7 @@
 
 - 사용자 등록·수정과 권한 관리
 - 모임 생성·수정, Host 배정과 상태 관리
-- 신청 시작 시각 설정과 대기 화면 미리보기
+- 신청 시작 시각과 Host 정보 공개 여부를 각각 저장하고 대기 화면 미리보기
 - 사용자·모임 관리 테이블 정렬
 - 추가 Admin console 비밀번호 확인
 
@@ -46,7 +47,7 @@ Host와 Admin 권한은 독립적이므로 한 사용자가 두 권한을 함께
 - 해당 파트의 `활성 Y` 인원이 `OPEN + CLOSED` 모임 수보다 많을 때는 같은 파트 2명까지 허용합니다. 개인의 현재 신청 가능 여부는 파트원 수 계산에서 제외하지 않습니다.
 - 한 모임에서 2명이 신청한 파트는 하나만 허용하며, 같은 파트의 3명째 신청은 항상 차단합니다.
 - `OPEN` 모임에만 신청·취소할 수 있고 정원을 초과할 수 없습니다.
-- `CLOSED`는 `신청 기간이 아닙니다.`, `CANCELLED`는 `취소되었습니다.`로 표시하고 `DRAFT`는 일반 화면에서 숨깁니다.
+- `CLOSED`는 `신청 종료`, `CANCELLED`는 `모임 취소`로 표시하고 `DRAFT`는 일반 화면에서 숨깁니다.
 - 신청자가 있는 모임은 `CANCELLED`로 바꿀 수 없습니다.
 - 화면에서 신청 가능으로 보였더라도 마지막 자리를 다른 사용자가 먼저 가져가면 서버가 다시 검사하여 거절하고, 최신 화면과 `방금 모집이 마감되었습니다.` toast를 보여줍니다.
 - PostgreSQL row lock과 unique/check constraint로 동시 신청, 정원 초과와 한 사용자의 중복 신청을 서버에서 방지합니다.
@@ -117,8 +118,7 @@ python -m scripts.seed_demo
 ### 6. 개발 서버
 
 ```bash
-. .venv/bin/activate
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+./scripts/run_local.sh
 ```
 
 - 애플리케이션: <http://localhost:8000>
@@ -160,6 +160,18 @@ pytest -q
 ```bash
 docker build -t pick-a-meet:local .
 docker images pick-a-meet
+```
+
+빌드부터 기존 smoke container 제거와 재실행까지 한 번에 수행할 수도 있습니다.
+
+```bash
+./scripts/redeploy_local.sh
+```
+
+DB schema 변경이 포함된 버전은 재실행 전에 migration을 적용합니다.
+
+```bash
+.venv/bin/alembic upgrade head
 ```
 
 WSL의 `127.0.0.1:5432` PostgreSQL을 사용하고 기존 개발 서버가 8000번에서 실행 중이라면, host network와 8001번으로 컨테이너를 실행합니다.
@@ -221,7 +233,7 @@ app/                    FastAPI 애플리케이션
   templates/            Jinja2 화면과 공통 partial
   static/               CSS, JavaScript, 내장 글꼴
 migrations/             Alembic schema migration
-scripts/                개발 seed, DB·최초 Admin bootstrap
+scripts/                로컬 실행·재배포, 개발 seed, DB·최초 Admin bootstrap
 tests/                  자동화 테스트
 k8s/                    사내 Kubernetes manifest 예시
 Dockerfile              운영 container image 정의
@@ -231,7 +243,7 @@ docker-compose.yml      로컬 PostgreSQL
 ## 구현 메모
 
 - DB schema 변경은 반드시 Alembic revision으로 남기며 `create_all()`과 수동 DDL을 섞지 않습니다.
-- 신청 시작 시각은 DB에 저장하고 서버 시작 시 메모리에 적재합니다. 이후 화면과 신청 검증은 메모리 값을 사용합니다.
-- 현재 신청 시간 캐시는 단일 프로세스 기준이므로 로컬과 사내 모두 worker/replica 1개를 사용합니다. 다중 replica는 공유 캐시 도입 후 진행합니다.
-- 신청·취소 POST는 화면 상태를 신뢰하지 않고 transaction 안에서 사용자, Host, 기존 신청, 모임 상태와 정원을 다시 검사합니다.
+- 신청 시작 시각과 Host 정보 공개 여부는 DB에 저장하고 서버 시작 시 메모리에 적재합니다.
+- 현재 전역 설정 캐시는 단일 프로세스 기준이므로 로컬과 사내 모두 worker/replica 1개를 사용합니다. 다중 replica는 공유 캐시 도입 후 진행합니다.
+- 신청·취소 POST는 화면 상태를 신뢰하지 않고 transaction 안에서 공통 registration policy로 사용자, Host, 기존 신청, 모임 상태·정원·파트 제한을 다시 검사합니다.
 - ID·사번은 query string이나 application log에 남기지 않고, 실제 Secret과 개인정보 파일을 Git에 commit하지 않습니다.

@@ -101,6 +101,9 @@ class RegistrationSchedule(TimestampMixin, Base):
 
     schedule_id: Mapped[int] = mapped_column(primary_key=True, default=1)
     opens_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    show_host_information: Mapped[bool] = mapped_column(
+        Boolean, default=False, nullable=False
+    )
 
 
 class Meeting(TimestampMixin, Base):

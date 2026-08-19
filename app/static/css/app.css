@@ -75,6 +75,12 @@ button:disabled { background: #adb5bd; border-color: #adb5bd; cursor: not-allowe
 .meeting-facts dt { color: #6c757d; font-size: .78rem; font-weight: 700; min-width: 3.5rem; }
 .meeting-facts dd { margin: 0; }
 .host-message > span { color: #6c757d; font-size: .75rem; font-weight: 700; }
+.meeting-host { align-items: flex-start; background: #f1f6ff; border: 1px solid #d8e7ff; border-radius: .45rem; display: flex; gap: .65rem; margin: .15rem 0 .7rem; min-width: 0; padding: .6rem .7rem; }
+.meeting-host > span { color: #0d6efd; flex: 0 0 2.5rem; font-size: .72rem; font-weight: 700; padding-top: .1rem; text-transform: uppercase; }
+.meeting-host > div { display: flex; flex-wrap: wrap; gap: .1rem .4rem; min-width: 0; overflow-wrap: anywhere; }
+.meeting-host strong { font-size: .88rem; }
+.meeting-host > div > span { color: #495057; font-size: .78rem; }
+.meeting-host small { color: #6c757d; flex-basis: 100%; font-size: .72rem; }
 .list-toolbar { align-items: center; display: flex; justify-content: space-between; }
 .management-toolbar { margin-bottom: 1rem; }
 .management-toolbar h2 { margin: 0; }
@@ -126,6 +132,15 @@ th { background: #f8f9fa; }
 .checkbox-row input { width: auto; }
 .summary-card { margin-bottom: 1rem; }
 .registration-settings-card { max-width: 620px; }
+.secondary-settings-card { margin-top: 1rem; }
+.settings-card-heading { align-items: flex-start; display: flex; gap: 1rem; justify-content: space-between; margin-bottom: 1rem; }
+.settings-card-heading h3 { margin: 0; }
+.settings-card-heading p { color: #6c757d; font-size: .82rem; margin: .25rem 0 0; }
+.settings-card-heading .button { flex: 0 0 auto; }
+.setting-toggle { align-items: flex-start; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: .45rem; display: flex; gap: .7rem; padding: .8rem; }
+.setting-toggle input { flex: 0 0 auto; margin-top: .2rem; width: auto; }
+.setting-toggle span { display: grid; gap: .15rem; }
+.setting-toggle small { color: #6c757d; font-weight: 400; }
 .registration-setting-status { align-items: baseline; border-bottom: 1px solid #e9ecef; display: flex; flex-wrap: wrap; gap: .45rem .75rem; padding-bottom: 1rem; }
 .registration-setting-status > span { color: #6c757d; font-size: .8rem; font-weight: 700; }
 .registration-setting-status > strong { color: #0d6efd; }
@@ -138,10 +153,12 @@ th { background: #f8f9fa; }
 .waiting-meeting-grid { margin-bottom: 2rem; }
 .waiting-meeting-grid .capacity { margin-bottom: 0; }
 .applicant-tooltip { cursor: help; position: relative; }
-.tooltip-panel { background: #212529; border-radius: .5rem; bottom: calc(100% + .5rem); box-shadow: 0 .5rem 1.25rem rgba(0,0,0,.2); color: #fff; display: none; left: 0; max-height: 260px; min-width: 260px; overflow: auto; padding: .8rem; position: absolute; text-align: left; z-index: 20; }
-.applicant-tooltip:hover .tooltip-panel, .applicant-tooltip:focus .tooltip-panel, .applicant-tooltip:focus-within .tooltip-panel { display: block; }
+.applicant-tooltip::before { bottom: 100%; content: ""; display: none; height: .5rem; left: 0; position: absolute; width: 100%; }
+.tooltip-panel { background: #212529; border-radius: .65rem; bottom: calc(100% + .5rem); box-shadow: 0 .65rem 1.5rem rgba(0,0,0,.24); color: #fff; display: none; left: 0; max-height: 460px; min-width: min(380px, calc(100vw - 2rem)); overflow: auto; padding: 1rem; position: absolute; text-align: left; z-index: 20; }
+.applicant-tooltip:hover .tooltip-panel, .applicant-tooltip:focus .tooltip-panel, .applicant-tooltip:focus-within .tooltip-panel, .applicant-tooltip.pinned .tooltip-panel { display: block; }
+.applicant-tooltip:hover::before, .applicant-tooltip:focus::before, .applicant-tooltip:focus-within::before, .applicant-tooltip.pinned::before { display: block; }
 .tooltip-panel ul { list-style: none; margin: .5rem 0 0; padding: 0; }
-.tooltip-panel li { border-top: 1px solid rgba(255,255,255,.2); padding: .45rem 0; }
+.tooltip-panel li { border-top: 1px solid rgba(255,255,255,.2); padding: .6rem 0; }
 .tooltip-panel small { color: #ced4da; display: block; margin-top: .15rem; }
 .tooltip-panel p { margin: .5rem 0 0; }
 .font-preview-grid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }

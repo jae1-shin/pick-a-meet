@@ -43,6 +43,8 @@ from app.services.registration_window import (
     parse_registration_opening,
     registration_is_open,
     registration_opens_at,
+    show_host_information,
+    update_host_information_visibility,
     update_registration_window,
 )
 from app.services.session_service import csrf_token, verify_csrf
@@ -198,6 +200,7 @@ def registration_settings_context(
         "csrf_token": csrf_token(request),
         "opens_at": local_opens_at,
         "registration_is_open": registration_is_open(),
+        "show_host_information": show_host_information(),
         "open_date": default_at.date().isoformat(),
         "open_hour": default_at.hour,
         "open_minute": default_at.minute,
@@ -293,6 +296,25 @@ async def admin_registration_settings(
         "신청을 즉시 시작하도록 설정했습니다."
         if opens_at is None
         else "신청 시작 일시를 저장했습니다.",
+    )
+    return RedirectResponse("/admin/registration-settings", status_code=303)
+
+
+@router.post("/registration-settings/host-visibility")
+async def admin_host_visibility_settings(
+    request: Request,
+    host_information_visible: bool = Form(False),
+    csrf: str = Form(...),
+    db: AsyncSession = Depends(get_db),
+) -> RedirectResponse:
+    verify_csrf(request, csrf)
+    await require_admin_console(request, db)
+    await update_host_information_visibility(db, host_information_visible)
+    request.session["flash"] = (
+        "success",
+        "모임 카드에 Host 정보를 표시합니다."
+        if host_information_visible
+        else "모임 카드에서 Host 정보를 숨깁니다.",
     )
     return RedirectResponse("/admin/registration-settings", status_code=303)
 

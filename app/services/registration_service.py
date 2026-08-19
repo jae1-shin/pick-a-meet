@@ -11,6 +11,10 @@ from app.models import (
     RegistrationHistory,
 )
 from app.services.part_registration_policy import part_registration_allowed
+from app.services.registration_policy import (
+    applicant_registration_denial_reason,
+    meeting_registration_denial_reason,
+)
 from app.services.registration_window import registration_is_open
 
 
@@ -59,7 +63,8 @@ async def _part_rule_allows_registration(
 async def apply_to_meeting(
     db: AsyncSession, member_id: int, meeting_id: int
 ) -> str:
-    if not registration_is_open():
+    registration_open = registration_is_open()
+    if not registration_open:
         return "REGISTRATION_NOT_STARTED"
     try:
         async with db.begin():
@@ -68,7 +73,7 @@ async def apply_to_meeting(
                 .where(Member.member_id == member_id)
                 .with_for_update()
             )
-            if member is None or not member.active or not member.apply_enabled:
+            if member is None:
                 return "NOT_ELIGIBLE"
 
             is_open_host = await db.scalar(
@@ -86,15 +91,22 @@ async def apply_to_meeting(
             existing = await db.scalar(
                 select(Registration).where(Registration.member_id == member_id)
             )
-            if existing is not None:
-                return "ALREADY_REGISTERED"
+            applicant_denial_reason = applicant_registration_denial_reason(
+                registration_open=registration_open,
+                member_active=member.active,
+                apply_enabled=member.apply_enabled,
+                is_open_host=bool(is_open_host),
+                has_active_registration=existing is not None,
+            )
+            if applicant_denial_reason is not None:
+                return applicant_denial_reason
 
             meeting = await db.scalar(
                 select(Meeting)
                 .where(Meeting.meeting_id == meeting_id)
                 .with_for_update()
             )
-            if meeting is None or meeting.status != "OPEN":
+            if meeting is None:
                 return "MEETING_NOT_OPEN"
 
             applied_count = await db.scalar(
@@ -102,10 +114,18 @@ async def apply_to_meeting(
                 .select_from(Registration)
                 .where(Registration.meeting_id == meeting_id)
             )
-            if (applied_count or 0) >= meeting.capacity:
-                return "MEETING_FULL"
-            if not await _part_rule_allows_registration(db, member, meeting_id):
-                return "PART_LIMIT_REACHED"
+            part_allowed = await _part_rule_allows_registration(
+                db, member, meeting_id
+            )
+            meeting_denial_reason = meeting_registration_denial_reason(
+                meeting_exists=True,
+                meeting_status=meeting.status,
+                applied_count=applied_count or 0,
+                capacity=meeting.capacity,
+                part_allowed=part_allowed,
+            )
+            if meeting_denial_reason is not None:
+                return meeting_denial_reason
 
             db.add(Registration(member_id=member_id, meeting_id=meeting_id))
             db.add(

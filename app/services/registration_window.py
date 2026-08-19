@@ -7,6 +7,7 @@ from app.models import RegistrationSchedule
 
 
 _opens_at: datetime | None = None
+_show_host_information = False
 
 
 class RegistrationWindowValidationError(ValueError):
@@ -22,6 +23,15 @@ def set_registration_opens_at(value: datetime | None) -> None:
 
 def registration_opens_at() -> datetime | None:
     return _opens_at
+
+
+def set_show_host_information(value: bool) -> None:
+    global _show_host_information
+    _show_host_information = value
+
+
+def show_host_information() -> bool:
+    return _show_host_information
 
 
 def registration_is_open(now: datetime | None = None) -> bool:
@@ -46,6 +56,9 @@ def registration_remaining_ms(now: datetime | None = None) -> int:
 async def load_registration_window(db: AsyncSession) -> None:
     schedule = await db.get(RegistrationSchedule, 1)
     set_registration_opens_at(schedule.opens_at if schedule else None)
+    set_show_host_information(
+        schedule.show_host_information if schedule else False
+    )
 
 
 def parse_registration_opening(
@@ -68,13 +81,35 @@ def parse_registration_opening(
 
 
 async def update_registration_window(
-    db: AsyncSession, opens_at: datetime | None
+    db: AsyncSession,
+    opens_at: datetime | None,
 ) -> None:
     schedule = await db.get(RegistrationSchedule, 1)
     if schedule is None:
-        schedule = RegistrationSchedule(schedule_id=1, opens_at=opens_at)
+        schedule = RegistrationSchedule(
+            schedule_id=1,
+            opens_at=opens_at,
+            show_host_information=False,
+        )
         db.add(schedule)
     else:
         schedule.opens_at = opens_at
     await db.commit()
     set_registration_opens_at(opens_at)
+
+
+async def update_host_information_visibility(
+    db: AsyncSession, host_information_visible: bool
+) -> None:
+    schedule = await db.get(RegistrationSchedule, 1)
+    if schedule is None:
+        schedule = RegistrationSchedule(
+            schedule_id=1,
+            opens_at=None,
+            show_host_information=host_information_visible,
+        )
+        db.add(schedule)
+    else:
+        schedule.show_host_information = host_information_visible
+    await db.commit()
+    set_show_host_information(host_information_visible)

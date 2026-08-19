@@ -9,7 +9,9 @@ from app.services.registration_window import (
     RegistrationWindowValidationError,
     parse_registration_opening,
     registration_is_open,
+    set_show_host_information,
     set_registration_opens_at,
+    show_host_information,
 )
 
 
@@ -42,6 +44,16 @@ def test_registration_opening_requires_ten_minute_interval() -> None:
             open_hour=19,
             open_minute=5,
         )
+
+
+def test_host_information_visibility_uses_memory_setting() -> None:
+    try:
+        set_show_host_information(True)
+        assert show_host_information()
+        set_show_host_information(False)
+        assert not show_host_information()
+    finally:
+        set_show_host_information(False)
 
 
 @pytest.mark.asyncio

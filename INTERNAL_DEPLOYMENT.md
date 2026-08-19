@@ -298,7 +298,7 @@ Deployment보다 먼저 동일 release image로 `alembic upgrade head`를 한 �
 - CPU/memory requests와 limits는 사내 quota에 맞춰 지정합니다.
 - image는 `latest` 대신 release tag 또는 digest로 고정합니다.
 
-신청 시작 시각은 DB에 저장되고 프로세스 시작 시 메모리에 캐시됩니다. 따라서 현재 구조에서는 Uvicorn worker도 1개로 실행합니다. replica나 worker를 늘리는 작업은 공유 캐시 도입과 함께 진행합니다.
+신청 시작 시각과 Host 정보 공개 여부는 DB에 저장되고 프로세스 시작 시 메모리에 캐시됩니다. 따라서 현재 구조에서는 Uvicorn worker도 1개로 실행합니다. replica나 worker를 늘리는 작업은 공유 캐시 도입과 함께 진행합니다.
 
 ### Service
 
